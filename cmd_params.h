@@ -7,6 +7,6 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_rng.h>
 
-#include "predator.h"
+#include "prey.h"
 
 void cmd_params(int argc, char** argv);

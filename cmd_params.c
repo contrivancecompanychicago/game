@@ -1,19 +1,46 @@
 #include "cmd_params.h"
 
+/* ----- from game.c ----- */
 extern unsigned rounds;
 extern unsigned seed;
+
 /* ----- from prey.c ----- */
 extern unsigned prey_num;
-
+extern unsigned user_prey;
+extern prey_pos * posh;
+prey_pos * post = NULL;
 
 /* --- from predator.c --- */
 extern char const_size;
 extern unsigned pred_num;
 extern unsigned cram;
 extern ram * ram_h;
+extern unsigned nsyn;
+extern unsigned nign;
+extern unsigned ncom;
 
+/*- from strategy_payoff.c -*/
+extern float variance;
 
 ram * tail = NULL;
+
+
+void add_prey_pos(float x, float y){
+	if (posh == NULL){ /* first entry */
+		posh = malloc(sizeof(prey_pos));
+		posh -> x = x;
+		posh -> y = y;
+		posh -> next = NULL;
+		post = posh;
+		return;
+	}
+	prey_pos * tmp = malloc(sizeof(prey_pos));
+	tmp -> x = x;
+	tmp -> y = y;
+	tmp -> next = NULL;
+	posh -> next = tmp;
+	post = tmp;
+}
 
 void add_ram(unsigned cr){
 	ram * tmp = malloc(sizeof(ram));
@@ -45,10 +72,11 @@ void cmd_params(int argc, char** argv){
 			continue;
 		}
 		/* gaussian parameter */
-		/*if ( (!strcmp(argv[i], "-gsnd" ) ) ){
-			sigma = atof(argv[++i]);
+
+		if ( (!strcmp(argv[i], "-gsnd" ) ) ){
+			variance = atof(argv[++i]);
 			continue;
-		}*/
+		}
 
 		/* ----- help ----- */
 		if ( (!strcmp(argv[i], "-help" ) ) ){
@@ -62,6 +90,7 @@ void cmd_params(int argc, char** argv){
 			continue;
 		}
 
+		/* whether population size will remain constant */
 		if ( (!strcmp(argv[i], "-cnst" ) ) ){
 			const_size = 1;
 			continue;
@@ -72,13 +101,35 @@ void cmd_params(int argc, char** argv){
 			continue;
 		}
 
-		if ( (!strcmp(argv[i], "-cram" ) ) ){
-			add_ram(atoi(argv[++i]));
+		if ( (!strcmp(argv[i], "-prey" ) ) ){
+			prey_num = atoi(argv[++i]);
 			continue;
 		}
 
-		if ( (!strcmp(argv[i], "-prey" ) ) ){
-			prey_num = atoi(argv[++i]);
+		/* position in map for a prey */
+		if ( (!strcmp(argv[i], "-ppos" ) ) ){
+			 add_prey_pos(atof(argv[++i]), atof(argv[++i]));
+			 user_prey++;
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-nsyn" ) ) ){
+	 		nsyn = atoi(argv[++i]);
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-nign" ) ) ){
+	 		nign = atoi(argv[++i]);
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-ncom" ) ) ){
+	 		ncom = atoi(argv[++i]);
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-cram" ) ) ){
+			add_ram(atoi(argv[++i]));
 			continue;
 		}
 

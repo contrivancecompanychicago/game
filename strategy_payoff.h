@@ -9,7 +9,7 @@
 
 #include "prey.h"
 
-strategy_t choose_strategy(predator * p, strategy_t social);
+strategy_t choose_strategy(char * pheno);
 
 char choose_mig_policy(predator * p, strategy_t social);
 
@@ -19,4 +19,4 @@ float competition_payoff(unsigned prey_val);
 
 float ignore_payoff(unsigned prey_val);
 
-void grant_payoff(unsigned prey_val);
+void grant_payoff(prey * p);

@@ -9,6 +9,11 @@
 
 #include "predator.h"
 
+typedef struct prey_pos{
+	double x;
+	double y;
+	struct prey_pos * next;
+}prey_pos;
 
 typedef struct prey{
 	unsigned id;
@@ -17,7 +22,6 @@ typedef struct prey{
 	float xaxis;
 	float yaxis;
 	next_gen * ng; /* predators which played the game and will thus form the next generation */
-	struct prey * next;
 }prey;
 
 typedef struct trigger{
@@ -26,7 +30,8 @@ typedef struct trigger{
 	struct trigger * next;
 }trigger;
 
-void find_in_range(prey * p, unsigned latitude, unsigned longtitude, predator * root);
+//void find_in_range(prey * p, unsigned latitude, unsigned longtitude, unsigned gen);
+void find_in_range(prey * p, unsigned gen);
 
 void add_prey();
 

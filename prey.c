@@ -2,8 +2,8 @@
 /* In this file every function related to the preys of the game is implemented */
 #include "prey.h"
 
-
 unsigned prey_num = 10;
+unsigned user_prey = 0; /* number of preys for which the position is user defined */
 unsigned num_preys = 0;
 unsigned playing_preys = 0;
 
@@ -13,60 +13,84 @@ double deplete = 0.8;	/* the max % of the prey that gets depleted from the preda
 
 float tot_fit = 0; 		/* total fitness/payoff among all players of a game */
 
-float range = 45.0;
+float range = 15.0;
 
+extern unsigned pred_num;
 extern unsigned unable;	   /* determines the number of predators that did not play a game ~ starting value is the total number of predators for each generation */
 extern double dimension;
 extern unsigned curr_gen;
 extern unsigned social_choices[3];
+extern generation * gens;
 
-prey * preylist; 			/* list of every prey in the game */
+prey_pos * posh = NULL;
+prey * prey_array = NULL;
 trigger * triggerlist;	/* list of every addition of prey that should occur ~ obviously in ascending order */
 
+
 void add_next(prey * p, predator * pred){
-	next_gen * tmp = malloc(sizeof(next_gen));
-	tmp -> pr = pred;
+	if (p -> num == 0) //first predator in this game
+		p -> ng = malloc(pred_num * sizeof(next_gen)); //leak
 	pred -> fitness = 1;
-	tmp -> fitness = 1;//payoff_matrix[p -> strategy -1] /  social_choices[p -> strategy - 1];
-	tmp -> next = p -> ng;
-	p -> ng = tmp;
-	//printf("--> %d\n", p -> strategy);
+	p -> ng[p -> num].pr = pred;
+	p -> ng[p -> num].fitness = 0; /* not yet determined */
 	social_choices[pred -> strategy-1]++; /* we have the -1 since undifined = 0 in the enumeration */
 	unable--;
+	p -> num++;
+	print_next(p);
 }
 
-void find_in_range(prey * p, unsigned latitude, unsigned longtitude, predator * root){
-	if (root == NULL)	/* reached a leaf */
-		return;
-	/* we first check if the current node is in range */
-	if (absolute(root -> xaxis - latitude) <= range && (absolute(root -> yaxis - longtitude) <= range))
-		add_next(p, root);
-	if (latitude - root -> xaxis <= range) /* if there is still reason to check left */
-		find_in_range(p, latitude, longtitude, root -> lc);
-	if (root -> xaxis - latitude <= range) /* if there is still reason to check right */
-		find_in_range(p, latitude, longtitude, root -> rc);
+void find_in_range(prey * p, unsigned gen){
+	unsigned i;
+	for (i = 0; i < gens[curr_gen].num; i++){
+		if (abs(p -> xaxis -  gens[curr_gen].pred[i].xaxis) <= range
+		 && abs(p -> yaxis -  gens[curr_gen].pred[i].yaxis) <= range
+		 && gens[curr_gen].pred[i].fitness == 0) /* in range and not in another game */
+		 	add_next(p, &gens[curr_gen].pred[i]);
+	}
+	return;
 }
 
 /* ---------------------------------------------------- */
 
 void add_prey(){
-	prey * p = malloc(sizeof(prey));
-	p -> id = ++num_preys;	/* we  increase the num of preys in the game by one */
-	p -> value = (rand() % 50 ) + 50;
-	p -> num = 0; /* number of predators playing the game ~ starts with zero */
-	p -> xaxis = dimension * (rand() / (float)RAND_MAX); // isws na yparxei kapoios kalyteros tropos
-	p -> yaxis = dimension * (rand() / (float)RAND_MAX);
-	p -> ng = NULL;
-	p -> next = preylist;		/* the list is in descending order regarding id */
-	preylist = p;
-	playing_preys++;
+	// prey * p = malloc(sizeof(prey));
+	// p -> id = ++num_preys;	/* we  increase the num of preys in the game by one */
+	// p -> value = 1;//(rand() % 50 ) + 50;
+	// p -> num = 0; /* number of predators playing the game ~ starts with zero */
+	// p -> xaxis = dimension * (rand() / (float)RAND_MAX); // isws na yparxei kapoios kalyteros tropos
+	// p -> yaxis = dimension * (rand() / (float)RAND_MAX);
+	// p -> ng = NULL;
+	// playing_preys++;
+}
+
+void init_preys(){
+	prey_array = calloc(prey_num, sizeof(prey));
+	unsigned i;
+	prey_pos * tmp = NULL;
+	for (i = 0; i < prey_num; i++){
+		prey_array[i].id = num_preys++;	/* we  increase the num of preys in the game by one */
+		prey_array[i].value = 1;//(rand() % 50 ) + 50;
+		prey_array[i].num = 0; /* number of predators playing the game ~ starts with zero */
+		if (user_prey > 0){
+			prey_array[i].xaxis = posh -> x;
+			prey_array[i].yaxis = posh -> y;
+			tmp = posh;
+			posh = posh -> next;
+			free(tmp);
+			user_prey--;
+		}
+		else{
+			prey_array[i].xaxis = dimension * (rand() / (float)RAND_MAX);
+			prey_array[i].yaxis = dimension * (rand() / (float)RAND_MAX);
+		}
+		prey_array[i].ng = NULL;
+	}
+	playing_preys+=prey_num;
 }
 
 /* ---------------------------------------------------- */
 
 void enable_trigger(){ /* the trigger that is enabled is always the first */
-	if (preylist == NULL) /* safety clause - should never be triggered */
-		assert(0);
 	unsigned i;
 	for ( i = 0; i < triggerlist -> prey_num; i++) /* we add as many preys as the trigger suggests */
 		add_prey();
@@ -105,37 +129,7 @@ void set_new_trigger(){ /* at that moment(round - generation) in time a new prey
 /* -------------- deplete & remove start -------------- */
 
 void remove_prey(unsigned pid){
-	if (preylist == NULL) /* safety clause - should never be triggered */
-		assert(0);
-	prey * tmp = preylist;
-	if (preylist -> id  == pid){
-		preylist = preylist -> next;
-		free(tmp);
-		return;
-	}
-	prey * prev = tmp;
-	while (tmp != NULL){
-		if ( tmp -> id == pid){
-			prev -> next = tmp -> next;
-			if (tmp -> ng != NULL){
-				next_gen * n = NULL;
-				while (tmp -> ng != NULL){
-					n = tmp -> ng;
-					tmp = tmp -> next;
-					free(n);
-				}
-			}
-			free(tmp);
-			playing_preys--;
-			set_new_trigger();
-			return;
-		}
-		else{
-			prev = tmp;
-			tmp = tmp -> next;
-		}
-	}
-	printf("A prey with id %d was not found\n", pid);
+
 }
 
 void deplete_prey(prey * p){ /* we reduct the preys value due to too many predators feasting upon it */
@@ -149,25 +143,36 @@ void deplete_prey(prey * p){ /* we reduct the preys value due to too many predat
 /* --- print start --- */
 
 void print_preys(){
-	prey * tmp = preylist;
 	FILE * f1 = fopen("preytogod.txt","a");
-	while (tmp != NULL){
-		fprintf(f1, "%u %u [%f %f]\n", tmp -> id, tmp -> value, tmp -> xaxis, tmp -> yaxis);
-		tmp = tmp -> next;
+	unsigned i;
+	for (i = 0; i < prey_num; i++){
+		fprintf(f1, "%u %u [%f %f] %u\n", prey_array[i].id,
+		prey_array[i].value, prey_array[i].xaxis, prey_array[i].yaxis, prey_array[i].num);
 	}
 	fclose(f1);
 }
 
 void print_next(prey * p){
-	next_gen * tmp = p -> ng;
 	FILE * f1 = fopen("next_gen.txt", "a");
-	fprintf(f1, "-------- Gen %d: for prey %d --------\n", curr_gen, p -> id);
-	while(tmp != NULL){
-		fprintf(f1, "id: %d par_id: %d fit: %f\n", tmp -> pr -> prid, tmp -> pr -> prid, tmp -> pr -> fitness);
-		tmp = tmp -> next;
+	fprintf(f1, "-------- Gen %d: for prey %d [%lf %lf] --------\n", curr_gen, p -> id, p -> xaxis, p -> yaxis);
+	unsigned i;
+	for (i = 0; i < p -> num; i++){
+		assert(p -> ng[i].pr != NULL);
+		fprintf(f1, "par_id: %d pos[%lf %lf] %f\n", p -> ng[i].pr -> prid,
+		 				p -> ng[i].pr -> xaxis, p -> ng[i].pr -> yaxis,
+		 				p -> ng[i].fitness);
 	}
 	fprintf(f1, "------------------------------ \n");
 	fclose(f1);
+}
+
+void free_prey(){
+	unsigned i;
+	for (i = 0; i < prey_num; i++){
+		if (prey_array[i].ng != NULL)
+			free(prey_array[i].ng);
+	}
+	free(prey_array);
 }
 
 /* ------------------------------------------------ BRIEF EXPLANATION OF THE CODE ------------------------------------------------ */
