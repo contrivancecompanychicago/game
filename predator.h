@@ -2,13 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
+#include <stdint.h>
 #include <time.h>
 
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_rng.h>
 
 #include "useful_math.h"
+
+typedef uint64_t num_type;
 
 typedef enum strategy_t{
 	undef, /*default case - not really in the game */
@@ -17,19 +19,21 @@ typedef enum strategy_t{
 	ignore
 }strategy_t;
 
+typedef struct sample_events{
+	unsigned gen;
+	unsigned num;
+	struct sample_events * next;
+}sample_events;
+
 typedef struct predator{
-	int prid;				/* unique id for each predator in a generation */
-	double fitness; // maybe we don't need fitness. Char play or no_play needed
+	double fitness;
 	strategy_t strategy;
 
-	int rec; /* whether the phenotype of the offspring is a product of recombination */
-	unsigned flag; /* number of offspings the predator has */
+	unsigned aggro; /* number of '1' the parts of the genotype infuencing the strategy contain */
 	double xaxis;
 	double yaxis;
-	struct predator * parent1; /* parent of the predator */
-	struct predator * parent2; /* parent of the predator */
 
-	char * pheno;  /* a pattern of bases which determines the strategy of the predator */
+	num_type * geno;  /* a pattern of bases which determines the strategy of the predator */
 	//char * migr; /* a patten of bases which determines the migration rate of the predator */
 
 }predator;
@@ -39,41 +43,26 @@ typedef struct generation{
 	unsigned num;			/* number of said predators */
 }generation;
 
-typedef struct next_gen{
-	predator * pr;
-	float fitness;
-}next_gen;
+typedef struct bottle{
+	unsigned gen;
+	unsigned preds;
+	struct bottle * next;
+}bottle;
 
-typedef struct ram{
-	unsigned cram;
-	struct ram * next;
-}ram;
+double mean(double x, double y);
 
-void init_pred();
+void print_genotype(predator * p);
+predator * recombine(predator * p, predator * parent1, predator * parent2);
+predator * set_geno(predator * p, predator * parent1, predator * parent2);
 
-//void find_in_range(unsigned latitude, unsigned longtitude, predator * root);
+predator * set_position(predator * p, predator * parent1, predator * parent2);
 
-//void find_in_range(unsign
-int get_height(predator *pr);
+unsigned find_parent(double fit);
+predator * choose_parents(predator * p);
 
-void rotate_left(predator * pr);
+void add_predator(unsigned num);
+void reproduce();
 
-void rotate_right(predator * pr);
+void print_predators(unsigned gen, unsigned curr_gen);
 
-int check_balance(predator * pr);
-
-void balance(predator * pr);
-
-//void add_predator(predator * p);
-
-predator * find_predator(unsigned prid, unsigned eucleidian, unsigned latitude, predator * tmp);
-
-//predator * next_inOrder(predator * p);
-
-void remove_predator(unsigned gen, unsigned index);
-
-unsigned darwinism(unsigned gen);
-
-void prune();
-
-void free_tree(predator * root);
+void init_predator();

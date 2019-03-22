@@ -1,8 +1,10 @@
 #include "cmd_params.h"
 
 /* ----- from game.c ----- */
+extern unsigned burnin;
 extern unsigned rounds;
-extern unsigned seed;
+extern time_t t;
+extern int sample_gen;
 
 /* ----- from prey.c ----- */
 extern unsigned prey_num;
@@ -13,17 +15,23 @@ prey_pos * post = NULL;
 /* --- from predator.c --- */
 extern char const_size;
 extern unsigned pred_num;
-extern unsigned cram;
-extern ram * ram_h;
+extern unsigned first_event;
+extern bottle * bottle_h;
 extern unsigned nsyn;
 extern unsigned nign;
 extern unsigned ncom;
+extern unsigned samples;
+
+extern unsigned genotype_size;
+extern unsigned * PosInfuence;
+extern unsigned num_inf;
 
 /*- from strategy_payoff.c -*/
 extern float variance;
 
-ram * tail = NULL;
-
+bottle * tail = NULL;
+extern sample_events * sample_h;
+sample_events * sample_t;
 
 void add_prey_pos(float x, float y){
 	if (posh == NULL){ /* first entry */
@@ -42,27 +50,54 @@ void add_prey_pos(float x, float y){
 	post = tmp;
 }
 
-void add_ram(unsigned cr){
-	ram * tmp = malloc(sizeof(ram));
-	tmp -> cram = cr;
+/* bottleneck events */
+void add_bottle(unsigned gen, unsigned preds){
+	bottle * tmp = malloc(sizeof(bottle));
+	tmp -> gen = gen;
+	tmp -> preds = preds;
 	tmp -> next = NULL;
-	if (ram_h == NULL){
-		cram = cr;
-		ram_h = tmp;
-		tail = ram_h;
+	if (bottle_h == NULL){
+		first_event = gen;
+		bottle_h = tmp;
+		tail = bottle_h;
 		return;
 	}
 	tail -> next = tmp;
 	tail = tail -> next;
 }
 
-void print_help(){
-	printf("\n\nhelp is for the weak. Go read the fucking code\n\n");
+/* sampling events */
+void add_samples(unsigned gen, unsigned num){
+	sample_events * tmp = malloc(sizeof(sample_events));
+	tmp -> gen = gen;
+	tmp -> num = num;
+	tmp -> next = NULL;
+	if (sample_h == NULL){
+		sample_h = tmp;
+		sample_t = tmp;
+		sample_gen = gen;
+		return;
+	}
+	sample_t -> next = tmp;
+	sample_t = sample_t -> next;
 }
 
-void cmd_params(int argc, char** argv){
+void print_help(){
+	printf("\n\n ------------ Command Line Parameters ------------ \n\n");
+
+	printf("General purpose commands:\n\n");
+	printf("\t-seed: user-defined seed for the random number generator function.\n\n");
+
+	printf("\t-rnds: determines the number of generations the program will simulate. Paremeter value must be a positive integer.\n\n");
+	printf("\t---\n\n");
+
+	printf("\n\nGo read the fucking code\n\n");
+}
+
+unsigned cmd_params(int argc, char** argv){
+	unsigned seed = (unsigned)time(&t);
 	int i;
-	for (i = 1; i < argv[i]; i++){
+	for (i = 1; i < argc; i++){
 
 		/* --------- general use ---------- */
 
@@ -71,8 +106,8 @@ void cmd_params(int argc, char** argv){
 			seed = atoi(argv[++i]);
 			continue;
 		}
-		/* gaussian parameter */
 
+		/* gaussian parameter */
 		if ( (!strcmp(argv[i], "-gsnd" ) ) ){
 			variance = atof(argv[++i]);
 			continue;
@@ -84,9 +119,13 @@ void cmd_params(int argc, char** argv){
 			exit(0);
 		}
 
-
 		if ( (!strcmp(argv[i], "-rnds" ) ) ){
 			rounds = atoi(argv[++i]);
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-burn" ) ) ){
+			burnin = atoi(argv[++i]);
 			continue;
 		}
 
@@ -128,12 +167,36 @@ void cmd_params(int argc, char** argv){
 			continue;
 		}
 
-		if ( (!strcmp(argv[i], "-cram" ) ) ){
-			add_ram(atoi(argv[++i]));
+		if ( (!strcmp(argv[i], "-bttl" ) ) ){
+			unsigned gen = atoi(argv[++i]);
+			unsigned prd = atoi(argv[++i]);
+			add_bottle(gen, prd);
 			continue;
 		}
 
+		if ( (!strcmp(argv[i], "-size" ) ) ){
+			genotype_size = atoi(argv[++i]);
+			continue;
+		}
+
+		/* determines sample events */
+		if ( (!strcmp(argv[i], "-smpl" ) ) ){
+			unsigned gen = atoi(argv[++i]);
+			unsigned num = atoi(argv[++i]);
+			add_samples(gen, num);
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-pinf" ) ) ){
+			num_inf = atoi(argv[++i]);
+			PosInfuence = malloc(num_inf * sizeof(unsigned));
+			unsigned x;
+			for (x = 0; x < num_inf; x++)
+				PosInfuence[x] = atoi(argv[++i]);
+			continue;
+		}
 
 		fprintf(stderr, "Argument %s is invalid\n\n", argv[i]);
 	}
+	return seed;
 }

@@ -9,4 +9,4 @@
 
 #include "prey.h"
 
-void cmd_params(int argc, char** argv);
+unsigned cmd_params(int argc, char** argv);

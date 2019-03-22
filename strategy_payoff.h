@@ -9,7 +9,7 @@
 
 #include "prey.h"
 
-strategy_t choose_strategy(char * pheno);
+strategy_t choose_strategy(unsigned aggro);
 
 char choose_mig_policy(predator * p, strategy_t social);
 

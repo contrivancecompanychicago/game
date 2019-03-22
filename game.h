@@ -9,4 +9,10 @@
 
 #include "strategy_payoff.h"
 
+void play(prey * p);
+
+void prep_game(prey * p);
+
+void free_prev(unsigned prev_gen);
+
 void game();

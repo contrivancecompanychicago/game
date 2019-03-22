@@ -1,4 +1,3 @@
-
 /* In this file every function related to the preys of the game is implemented */
 #include "prey.h"
 
@@ -11,14 +10,14 @@ unsigned max_penalty = 7;
 unsigned min_penalty = 3;
 double deplete = 0.8;	/* the max % of the prey that gets depleted from the predators */
 
-float tot_fit = 0; 		/* total fitness/payoff among all players of a game */
+float tot_fit = 0.0; 		/* total fitness/payoff among all players of a game */
 
-float range = 15.0;
+float range = 25.0;
 
 extern unsigned pred_num;
-extern unsigned unable;	   /* determines the number of predators that did not play a game ~ starting value is the total number of predators for each generation */
 extern double dimension;
-extern unsigned curr_gen;
+extern unsigned curr_gen; // probably not needed
+extern unsigned curr_flag;
 extern unsigned social_choices[3];
 extern generation * gens;
 
@@ -26,45 +25,31 @@ prey_pos * posh = NULL;
 prey * prey_array = NULL;
 trigger * triggerlist;	/* list of every addition of prey that should occur ~ obviously in ascending order */
 
-
-void add_next(prey * p, predator * pred){
-	if (p -> num == 0) //first predator in this game
-		p -> ng = malloc(pred_num * sizeof(next_gen)); //leak
-	pred -> fitness = 1;
-	p -> ng[p -> num].pr = pred;
-	p -> ng[p -> num].fitness = 0; /* not yet determined */
-	social_choices[pred -> strategy-1]++; /* we have the -1 since undifined = 0 in the enumeration */
-	unable--;
+void add_next(prey * p, unsigned index, strategy_t strat){
+	if (p -> num == 0) /* first predator in this game */
+		p -> pred_index = malloc(gens[!curr_flag].num * sizeof(unsigned));
+	p -> pred_index[p -> num] = index;
+	social_choices[strat - 1]++; /* we have the -1 since undifined = 0 in the enumeration */
 	p -> num++;
-	print_next(p);
+	//print_next(p);
 }
 
 void find_in_range(prey * p, unsigned gen){
 	unsigned i;
-	for (i = 0; i < gens[curr_gen].num; i++){
-		if (abs(p -> xaxis -  gens[curr_gen].pred[i].xaxis) <= range
-		 && abs(p -> yaxis -  gens[curr_gen].pred[i].yaxis) <= range
-		 && gens[curr_gen].pred[i].fitness == 0) /* in range and not in another game */
-		 	add_next(p, &gens[curr_gen].pred[i]);
+	for (i = 0; i < gens[gen].num; i++){
+		if (abs(p -> xaxis -  gens[gen].pred[i].xaxis) <= range
+		 && abs(p -> yaxis -  gens[gen].pred[i].yaxis) <= range
+		 && gens[gen].pred[i].fitness == 0){ /* in range and not in another game */
+			add_next(p, i, gens[gen].pred[i].strategy);
+		}
 	}
 	return;
 }
 
 /* ---------------------------------------------------- */
 
-void add_prey(){
-	// prey * p = malloc(sizeof(prey));
-	// p -> id = ++num_preys;	/* we  increase the num of preys in the game by one */
-	// p -> value = 1;//(rand() % 50 ) + 50;
-	// p -> num = 0; /* number of predators playing the game ~ starts with zero */
-	// p -> xaxis = dimension * (rand() / (float)RAND_MAX); // isws na yparxei kapoios kalyteros tropos
-	// p -> yaxis = dimension * (rand() / (float)RAND_MAX);
-	// p -> ng = NULL;
-	// playing_preys++;
-}
-
 void init_preys(){
-	prey_array = calloc(prey_num, sizeof(prey));
+	prey_array = malloc(prey_num * sizeof(prey));
 	unsigned i;
 	prey_pos * tmp = NULL;
 	for (i = 0; i < prey_num; i++){
@@ -83,24 +68,23 @@ void init_preys(){
 			prey_array[i].xaxis = dimension * (rand() / (float)RAND_MAX);
 			prey_array[i].yaxis = dimension * (rand() / (float)RAND_MAX);
 		}
-		prey_array[i].ng = NULL;
+		prey_array[i].pred_index = NULL;
 	}
 	playing_preys+=prey_num;
 }
-
 /* ---------------------------------------------------- */
 
 void enable_trigger(){ /* the trigger that is enabled is always the first */
-	unsigned i;
-	for ( i = 0; i < triggerlist -> prey_num; i++) /* we add as many preys as the trigger suggests */
-		add_prey();
-	if (triggerlist -> next == NULL) /* sole trigger */
-		free(triggerlist);
-	else{
-		trigger * tmp = triggerlist;
-		triggerlist = triggerlist -> next;
-		free(tmp);
-	}
+	// unsigned i;
+	// for ( i = 0; i < triggerlist -> prey_num; i++) /* we add as many preys as the trigger suggests */
+	// 	add_prey();
+	// if (triggerlist -> next == NULL) /* sole trigger */
+	// 	free(triggerlist);
+	// else{
+	// 	trigger * tmp = triggerlist;
+	// 	triggerlist = triggerlist -> next;
+	// 	free(tmp);
+	// }
 }
 
 void set_new_trigger(){ /* at that moment(round - generation) in time a new prey will be added */
@@ -154,13 +138,11 @@ void print_preys(){
 
 void print_next(prey * p){
 	FILE * f1 = fopen("next_gen.txt", "a");
-	fprintf(f1, "-------- Gen %d: for prey %d [%lf %lf] --------\n", curr_gen, p -> id, p -> xaxis, p -> yaxis);
+	fprintf(f1, "-------- Gen %d: for prey %d [%lf %lf] --------\n", curr_flag, p -> id, p -> xaxis, p -> yaxis);
 	unsigned i;
 	for (i = 0; i < p -> num; i++){
-		assert(p -> ng[i].pr != NULL);
-		fprintf(f1, "par_id: %d pos[%lf %lf] %f\n", p -> ng[i].pr -> prid,
-		 				p -> ng[i].pr -> xaxis, p -> ng[i].pr -> yaxis,
-		 				p -> ng[i].fitness);
+		assert(p -> pred_index != NULL);
+		fprintf(f1, "pos[%lf %lf]\n",	gens[curr_flag].pred[p -> pred_index[i]].xaxis, gens[curr_flag].pred[p -> pred_index[i]].yaxis);
 	}
 	fprintf(f1, "------------------------------ \n");
 	fclose(f1);
@@ -169,8 +151,8 @@ void print_next(prey * p){
 void free_prey(){
 	unsigned i;
 	for (i = 0; i < prey_num; i++){
-		if (prey_array[i].ng != NULL)
-			free(prey_array[i].ng);
+		if (prey_array[i].pred_index != NULL)
+			free(prey_array[i].pred_index);
 	}
 	free(prey_array);
 }

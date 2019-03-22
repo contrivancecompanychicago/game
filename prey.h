@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <stdint.h>
 
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_rng.h>
@@ -21,7 +22,7 @@ typedef struct prey{
 	unsigned num;
 	float xaxis;
 	float yaxis;
-	next_gen * ng; /* predators which played the game and will thus form the next generation */
+	unsigned * pred_index; /* indexes of predators that will participate in the game */
 }prey;
 
 typedef struct trigger{
@@ -30,15 +31,17 @@ typedef struct trigger{
 	struct trigger * next;
 }trigger;
 
-//void find_in_range(prey * p, unsigned latitude, unsigned longtitude, unsigned gen);
+void add_next(prey * p, unsigned index, strategy_t strat);
+
 void find_in_range(prey * p, unsigned gen);
 
-void add_prey();
+void init_preys();
 
 void enable_trigger();
-
 void set_new_trigger();
-
 void remove_prey(unsigned pid);
-
 void deplete_prey(prey * p);
+
+void print_preys();
+void print_next(prey * p);
+void free_prey();

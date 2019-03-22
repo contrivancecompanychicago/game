@@ -1,4 +1,4 @@
-SOURCES =  game.c cmd_params.c predator.c prey.c strategy_payoff.c useful_math.c
+SOURCES =  game.c cmd_params.c predator.c prey.c strategy_payoff.c produce_output.c
 OBJECTS = $(SOURCES:%.c=%.o)
 
 TARGET = game
@@ -6,7 +6,7 @@ TARGET = game
 all: $(TARGET)
 
 %.o: %.c
-	gcc -pedantic -w  -g $< -c -o $@
+	gcc -pedantic -g $< -c -o $@
 
 $(TARGET): $(OBJECTS)
 	gcc $(OBJECTS) -o $@ -lm -lgsl -lgslcblas
