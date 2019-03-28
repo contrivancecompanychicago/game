@@ -28,6 +28,7 @@ unsigned fit_size;
 extern void sampling(unsigned num);
 extern void print_samples();
 extern void free_samples();
+extern void print_strategies(unsigned gen);
 
 extern void ms_output();
 sample_events * sample_h = NULL;
@@ -129,10 +130,8 @@ void burn_in(){
 	unsigned i;
 	while (curr_gen < burnin){
 		gens[curr_flag].num = 0;
-		for (i = 0; i < pred_num; i++){
+		for (i = 0; i < pred_num; i++)
 			add_burnin_predator(i);
-			print_predators(curr_flag, curr_gen);
-		}
 		gens[curr_flag].num += pred_num;
 		curr_gen++;
 		curr_flag = !curr_flag; /* switch the index of the previous generation */
@@ -144,8 +143,10 @@ void game(){
 	unsigned i = 0;
 	while (curr_gen < rounds){
 		/* special event happens during this generation */
-		if (curr_gen % 500 == 0)
+		if (curr_gen % 500 == 0){
 			fprintf(stderr, "Current Generation: %u\n", curr_gen);
+			print_strategies(curr_flag);
+		}
 		if (curr_gen == sample_gen && sample_h != NULL){
 			sampling(sample_h -> num);
 			sample_events * tmp = sample_h;

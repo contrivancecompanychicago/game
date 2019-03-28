@@ -58,20 +58,20 @@ predator * recombine(predator * p, predator * parent1, predator * parent2){
 	p -> geno = (num_type *)malloc(sizeof(num_type) * genotype_size);
 	num_type left, right;
 	if (rand() / (double)RAND_MAX < 0.5){ /* parent1 gives the left part */
-		memcpy(p -> geno, parent1 -> geno, (cutting_point+1) * sizeof(num_type));
-		if (cutting_point != genotype_size-1)
-			memcpy(p -> geno + (cutting_point+1)*sizeof(num_type), parent2 -> geno + (cutting_point+1)*sizeof(num_type),
+		memcpy(p -> geno, parent1 -> geno, (cutting_point + 1) * sizeof(num_type));
+		if (cutting_point != genotype_size - 1)
+			memcpy(p -> geno + (cutting_point + 1)*sizeof(num_type), parent2 -> geno + (cutting_point + 1)*sizeof(num_type),
 		 (genotype_size - cutting_point - 2) * sizeof(num_type));
-		 left = parent1 -> geno[cutting_point+1];
-		 right = parent2 -> geno[cutting_point+1];
+		 left = parent1 -> geno[cutting_point + 1];
+		 right = parent2 -> geno[cutting_point + 1];
 	}
 	else{
-		memcpy(p -> geno, parent2 -> geno, (cutting_point+1) * sizeof(num_type));
-		if (cutting_point != genotype_size-1)
-			memcpy(p -> geno + (cutting_point+1)*sizeof(num_type), parent1 -> geno + (cutting_point+1)*sizeof(num_type),
-			 (genotype_size - cutting_point-2) * sizeof(num_type));
-			 left = parent2 -> geno[cutting_point+1];
-			 right = parent1 -> geno[cutting_point+1];
+		memcpy(p -> geno, parent2 -> geno, (cutting_point + 1) * sizeof(num_type));
+		if (cutting_point != genotype_size - 1)
+			memcpy(p -> geno + (cutting_point + 1)*sizeof(num_type), parent1 -> geno + (cutting_point + 1)*sizeof(num_type),
+			 (genotype_size - cutting_point - 2) * sizeof(num_type));
+			 left = parent2 -> geno[cutting_point + 1];
+			 right = parent1 -> geno[cutting_point + 1];
 	}
 
 	/* now we need to recombine the cutting point */

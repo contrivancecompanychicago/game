@@ -12,7 +12,7 @@ double deplete = 0.8;	/* the max % of the prey that gets depleted from the preda
 
 float tot_fit = 0.0; 		/* total fitness/payoff among all players of a game */
 
-float range = 25.0;
+float range = 15.0;
 
 extern unsigned pred_num;
 extern double dimension;

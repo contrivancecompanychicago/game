@@ -9,6 +9,15 @@ extern short * MutationEvents;
 
 genome_sample * Sam_genome = NULL;
 
+void print_strategies(unsigned gen){
+  unsigned i;
+  FILE * f1 = fopen("strategies.txt", "a");
+  for (i = 0; i < gens[gen].num; i++)
+    fprintf(f1, "%u ", gens[gen].pred[i].strategy);
+  fprintf(f1, "\n");
+  fclose(f1);
+}
+
 void print_samples(){
   FILE * f1 = fopen("samples.txt", "a");
   unsigned i,j;
@@ -52,12 +61,19 @@ void sampling(unsigned num){
 
   for (i = samples; i < (samples + num); i++){
     Sam_genome[i].geno = malloc(genotype_size * sizeof(num_type));
-    memcpy(Sam_genome[i].geno, gens[curr_flag].pred[samplesID[i-samples]].geno, genotype_size * sizeof(num_type));
-    Sam_genome[i].strategy = gens[curr_flag].pred[samplesID[i-samples]].strategy;
+    memcpy(Sam_genome[i].geno, gens[curr_flag].pred[samplesID[i - samples]].geno, genotype_size * sizeof(num_type));
+    Sam_genome[i].strategy = gens[curr_flag].pred[samplesID[i - samples]].strategy;
     Sam_genome[i].gen = curr_gen;
   }
   samples += num;
   fprintf(stderr, "sampl: %u\n", samples);
+
+  FILE * f1 = fopen("sampled_strategies.txt","a");
+  fprintf(f1, "Gen: %u w/ %u samples\n", curr_gen, samples);
+  for (i = samples; i < (samples + num); i++)
+    fprintf(f1, "%u ", gens[curr_flag].pred[samplesID[i - samples]].strategy);
+  fprintf(f1, "\n");
+  fclose(f1);
   free(samplesID);
 }
 
@@ -111,6 +127,9 @@ void ms_output(){
 
 void vcf_output(){
   FILE * f1 = fopen("vcf_mutation_table.txt", "w");
+  fprintf(f1, "#fileformat=VCFv4.3\n");
+
+
   fclose(f1);
 }
 
