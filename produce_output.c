@@ -80,18 +80,22 @@ void sampling(unsigned num){
 /* this is convert otherwise print */
 void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_file){
   if( counter < max )
-    print_binary( number >> 1, ++counter, max, out_file);
+    print_binary( number >> 1, ++counter, max, out_file, space);
   putc((number & 1) ? '1' : '0', out_file);
 }
 
 //prints the mutation table of the predators in the last generation
 void ms_output(){
   /* we first need to print the general information */
-  FILE * f1 = fopen("ms_mutation_table.txt", "w");
-  fprintf(f1, "//\n");
+  unsigned i;
   long long unsigned bits = sizeof(num_type) * 8;
-  long long unsigned max_segment = genotype_size * 8 * sizeof(num_type) + 1;
-  unsigned s, i, j;
+  FILE * f1 = fopen("ms_mutation_table.txt", "w");
+  fprintf(f1, "//\nsegsites: %lu\npositions: ", genotype_size * 8 * sizeof(num_type));
+  for (i = 0; i <  genotype_size * 8 * sizeof(num_type); i++){
+    fprintf(f1, "%u ", i);
+  }
+  fprintf(f1, "\n");
+  unsigned s, j;
   for (s = 0; s < samples; s++){
     for (i = 0; i < genotype_size; i++){
       if (Sam_genome[s].geno[i])
@@ -103,25 +107,6 @@ void ms_output(){
       fprintf(f1, "\n");
     }
   }
-
-  // fprintf(f1, "//\nsegsites: %d\npositions: ", (mut));   // <--- this is tricky AF
-  // for (i = 0; i < mut; i++){ /* print the positions where the mutation occcured */
-  //   if (poly[i])
-  //     fprintf(f1, "%lf ", ( mut_pos[i] / (float)() ));
-  // }
-  //
-  // unsigned bit_num = sizeof(num_type)*8;
-  // unsigned s, i, j;
-  // for (s = 0; s < samples; s++){ /* check every sample for mutations and print them */
-  //   for (i = 0; i < genotype_size; i++)
-  //     if (MutationEvents[i]) /* if there is at least a bit with a value of '1' */
-  //       print_binary(gens[curr_flag], 0, bit_num, f1);                      // ????? is it curr_flag ?????
-  //     else{ /* no need to convert to binary we already know it's 0s in every position */
-  //       for (j = 0; j < bit_num; j++)
-  //         fprintf(f1, "0");
-  //     }
-  //   fprintf(f1, "\n");
-  // }
   fclose(f1);
 }
 
