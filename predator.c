@@ -21,8 +21,8 @@ extern float variance;
 extern unsigned rounds;
 extern gsl_rng * r;
 
-double recombination_rate = 0.1;
-double mutation_rate = 0.3;
+double recombination_rate = 0.0;
+double mutation_rate = 0.0;
 short * MutationEvents;
 
 unsigned num_inf = 0;					/* number of 64-sized genome segments that influence strategy */
@@ -226,6 +226,7 @@ predator * init_genotype(predator * p, unsigned pos, unsigned num){
 	for (i = 0; i < num; i++)
 		p -> geno[pos] +=	1 << (unsigned)perm->data[i];
 	free(PosOnes);
+	gsl_rng_free(perm);
 	return p;
 }
 
@@ -247,34 +248,37 @@ void init_predator(){
 	gens[0].pred[x].aggro = 0;
 	unsigned i = 0;
 	if (nsyn > 0){ /* user-defined synergistic predators */
+		fprintf(stderr, "nsyn\n");
 		gens[0].pred[x].strategy = synergy;
-		nsyn--;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			num = rand() % (unsigned)(syn_rate * genotype_size);
-			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
+			num = rand() % (unsigned)(syn_rate * sizeof(num_type));
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num/num_inf);
 			gens[0].pred[x].aggro += num;
 		}
+		nsyn--;
 	}
 	else if (nign > 0){ /* user-defined ignore predators */
+		fprintf(stderr, "nign\n");
 		gens[0].pred[x].strategy = ignore;
-		nign--;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			num = rand() % (unsigned)((com_rate - syn_rate) * genotype_size)  + syn_rate * genotype_size;
+			num = rand() % (unsigned)((com_rate - syn_rate) * sizeof(num_type))  + (unsigned)(syn_rate * sizeof(num_type));
 			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
 			gens[0].pred[x].aggro += num;
 		}
+		nign--;
 	}
 	else if (ncom > 0){
+		fprintf(stderr, "ncom\n");
 		gens[0].pred[x].strategy = competition;
-		ncom--;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			num = rand() % (unsigned)((1 -com_rate) * genotype_size) + com_rate * genotype_size ;
-			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
+			num = rand() % (unsigned)((1 -com_rate) * sizeof(num_type)) + (unsigned)(com_rate * sizeof(num_type));
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num/num_inf);
 			gens[0].pred[x].aggro += num;
 		}
+		ncom--;
 	}
 	else{
 		for (i = 0; i < num_inf; i++){
