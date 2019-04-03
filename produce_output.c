@@ -80,20 +80,18 @@ void sampling(unsigned num){
 /* this is convert otherwise print */
 void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_file){
   if( counter < max )
-    print_binary( number >> 1, ++counter, max, out_file, space);
+    print_binary( number >> 1, ++counter, max, out_file);
   putc((number & 1) ? '1' : '0', out_file);
 }
 
-//prints the mutation table of the predators in the last generation
 void ms_output(){
   /* we first need to print the general information */
   unsigned i;
   long long unsigned bits = sizeof(num_type) * 8;
   FILE * f1 = fopen("ms_mutation_table.txt", "w");
   fprintf(f1, "//\nsegsites: %lu\npositions: ", genotype_size * 8 * sizeof(num_type));
-  for (i = 0; i <  genotype_size * 8 * sizeof(num_type); i++){
+  for (i = 0; i <  genotype_size * 8 * sizeof(num_type); i++)
     fprintf(f1, "%u ", i);
-  }
   fprintf(f1, "\n");
   unsigned s, j;
   for (s = 0; s < samples; s++){
@@ -101,7 +99,7 @@ void ms_output(){
       if (Sam_genome[s].geno[i])
         print_binary(Sam_genome[s].geno[i], 1, bits, f1);
       else{
-        for (j = 0; j < bits; j++)
+        for (j = 1; j < bits; j++)
           fprintf(f1, "0");
       }
       fprintf(f1, "\n");
@@ -124,7 +122,3 @@ void free_samples(){
     free(Sam_genome[i].geno);
   free(Sam_genome);
 }
-/*
-Αν έχω ancestral sampling δεν μπορώ να εκτυπώνω μόνο τις 64-αδες με το mutation διότι θα προστεθούν πιθανώς κι άλλες.
-ΤΑ POSITIONS ΕΙΝΑΙ ΘΕΜΑ, όπως κι ο αριθμός γιατί δεν τα ξέρω πριν μπω στη διαδικασία να εκτυπώσω το mutation_table.
-*/

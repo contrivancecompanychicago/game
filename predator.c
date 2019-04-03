@@ -12,6 +12,9 @@ extern unsigned social_choices[3];
 extern float payoff_matrix[3];
 extern float tot_fit;
 
+extern float com_rate;
+extern float syn_rate;
+
 extern strategy_t choose_strategy(unsigned aggro);
 extern float variance;
 
@@ -25,8 +28,8 @@ short * MutationEvents;
 unsigned num_inf = 0;					/* number of 64-sized genome segments that influence strategy */
 unsigned * PosInfuence; 			/* which those 64-sized segments are */
 
-/* ------ genotype expression ------ */
-unsigned genotype_size = 5; 	/* determines how many bases affect the strategy of each predator */
+/* ------- genotype expression ------ */
+unsigned genotype_size = 10; 	/* determines how many bases affect the strategy of each predator */
 unsigned migration_size = 5;	/* determines how many bases affect the migration pattern of each predator */
 /* ---------------------------------- */
 char const_size = 0; 					/* determines whether the number of predators remains constant in each generation */
@@ -167,11 +170,6 @@ predator * choose_parents(predator * p){
 	return p;
 }
 
-
-predator * choose_burnin_parents(predator * p){
-
-}
-
 void add_burnin_predator(unsigned num){
 	gens[curr_flag].pred[num].fitness = 0.0; /* is determined after the game */
 	unsigned parent1, parent2 = 0;
@@ -217,6 +215,19 @@ void print_predators(unsigned gen, unsigned curr_gen){
 }
 
 /* ------------------ */
+predator * init_genotype(predator * p, unsigned pos, unsigned num){
+	short * PosOnes = malloc(sizeof(num_type));
+	unsigned bits = (sizeof(num_type)*8);
+	gsl_permutation * perm = gsl_permutation_alloc((size_t)bits);
+	gsl_permutation_init(perm);
+	gsl_ran_shuffle(r, perm -> data, (size_t)bits, sizeof(size_t) );
+
+	unsigned i;
+	for (i = 0; i < num; i++)
+		p -> geno[pos] +=	1 << (unsigned)perm->data[i];
+	free(PosOnes);
+	return p;
+}
 
 void init_predator(){
 	unsigned x = gens[0].num;
@@ -238,28 +249,36 @@ void init_predator(){
 	if (nsyn > 0){ /* user-defined synergistic predators */
 		gens[0].pred[x].strategy = synergy;
 		nsyn--;
-		for (i = 0; i < num_inf; i++)
-			gens[0].pred[x].geno[PosInfuence[i]] = 0;
+		unsigned num;
+		for (i = 0; i < num_inf; i++){
+			num = rand() % (unsigned)(syn_rate * genotype_size);
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
+			gens[0].pred[x].aggro += num;
+		}
 	}
-	else if (nign > 0){
+	else if (nign > 0){ /* user-defined ignore predators */
 		gens[0].pred[x].strategy = ignore;
 		nign--;
+		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = MAXIMUM >> 6;
-			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+			num = rand() % (unsigned)((com_rate - syn_rate) * genotype_size)  + syn_rate * genotype_size;
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
+			gens[0].pred[x].aggro += num;
 		}
 	}
 	else if (ncom > 0){
 		gens[0].pred[x].strategy = competition;
 		ncom--;
+		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = 1 << 31;
-			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+			num = rand() % (unsigned)((1 -com_rate) * genotype_size) + com_rate * genotype_size ;
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
+			gens[0].pred[x].aggro += num;
 		}
 	}
 	else{
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = rand() % MAXIMUM;
+			gens[0].pred[x].geno[PosInfuence[i]] = (unsigned long long)rand() % MAXIMUM;
 			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
 		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
