@@ -8,6 +8,7 @@ extern unsigned genotype_size;
 extern short * MutationEvents;
 
 genome_sample * Sam_genome = NULL;
+extern gsl_rng * r;
 
 void print_strategies(unsigned gen){
   unsigned i;
@@ -32,8 +33,10 @@ void print_samples(){
 }
 
 void sampling(unsigned num){
-  unsigned * samplesID = malloc(num * sizeof(unsigned));
-  unsigned sampflag = 0;
+  gsl_permutation * perm = gsl_permutation_alloc((size_t)gens[curr_flag].num);
+  gsl_permutation_init(perm);
+  gsl_ran_shuffle(r, perm -> data, (size_t)gens[curr_flag].num, sizeof(size_t));
+
   if (Sam_genome == NULL){
     Sam_genome = malloc(num * sizeof(genome_sample));
     samples = 0;
@@ -41,28 +44,11 @@ void sampling(unsigned num){
   else
     Sam_genome = realloc(Sam_genome, (num + samples) * sizeof(genome_sample));
 
-  unsigned i,j, random;
-  for (i = 0; i < num; i++){
-    sampflag = 0;
-    random = rand() % gens[curr_flag].num;
-    for (j = 0; j < i; j++){
-      if (samplesID[j] == random){
-        sampflag = 1;
-        break;
-      }
-    }
-    if (sampflag){
-      i--;
-      sampflag = 0;
-      continue;
-    }
-    samplesID[i] = random;
-  }
-
+  unsigned i;
   for (i = samples; i < (samples + num); i++){
     Sam_genome[i].geno = malloc(genotype_size * sizeof(num_type));
-    memcpy(Sam_genome[i].geno, gens[curr_flag].pred[samplesID[i - samples]].geno, genotype_size * sizeof(num_type));
-    Sam_genome[i].strategy = gens[curr_flag].pred[samplesID[i - samples]].strategy;
+    memcpy(Sam_genome[i].geno, gens[curr_flag].pred[(unsigned)perm->data[i]].geno, genotype_size * sizeof(num_type));
+    Sam_genome[i].strategy = gens[curr_flag].pred[(unsigned)perm->data[i]].strategy;
     Sam_genome[i].gen = curr_gen;
   }
   samples += num;
@@ -71,10 +57,10 @@ void sampling(unsigned num){
   FILE * f1 = fopen("sampled_strategies.txt","a");
   fprintf(f1, "Gen: %u w/ %u samples\n", curr_gen, samples);
   for (i = samples; i < (samples + num); i++)
-    fprintf(f1, "%u ", gens[curr_flag].pred[samplesID[i - samples]].strategy);
+    fprintf(f1, "%u ", gens[curr_flag].pred[(unsigned)perm->data[i]].strategy);
   fprintf(f1, "\n");
   fclose(f1);
-  free(samplesID);
+  gsl_permutation_free(perm);
 }
 
 /* this is convert otherwise print */
