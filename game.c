@@ -19,7 +19,7 @@ extern unsigned cram;
 extern unsigned genotype_size;
 extern unsigned * PosInfuence;
 extern unsigned num_inf;
-extern unsigned * MutationEvents;
+extern short * MutationEvents;
 extern double ** FitMap;
 char pop_change = '0';
 unsigned fit_size;
@@ -154,7 +154,7 @@ void game(){
 			free(tmp);
 			if (sample_h != NULL)
 				sample_gen = sample_h -> gen;
-			print_samples();
+		//	print_samples();
 		}
 		if (curr_gen == first_event)
 			change_population_size();
@@ -190,7 +190,7 @@ void freedom(){
 	gsl_rng_free(r);
 }
 
-int main(int argc, char** argv){
+int main(int argc, char ** argv){
 	unsigned seed = cmd_params(argc, argv);
 
 	srand(seed);
@@ -210,11 +210,12 @@ int main(int argc, char** argv){
 	if (!num_inf){
 		num_inf = 1;
 		PosInfuence = malloc(sizeof(unsigned));
-		PosInfuence[0] = rand()% genotype_size;
+		PosInfuence[0] = rand() % genotype_size;
 	}
 	unsigned i;
 	for (i = 0; i < pred_num; i++)
 		init_predator();
+	print_predators(!curr_flag, curr_gen);
 
 	/* ---- init generation 1 (no values assigned)---- */
 	gens[1].pred = malloc(pred_num * sizeof(predator));
@@ -230,9 +231,9 @@ int main(int argc, char** argv){
 	game();
 
 	/* we now sample predators and print the mutation table */
-	//assert(samples <= pred_num);
-	// if (sample_h != NULL) /* final sampling event */
-  // 	sampling(sample_h -> num);
+	assert(samples <= pred_num);
+	if (sample_h != NULL) /* final sampling event */
+  	sampling(sample_h -> num);
 	ms_output();
 
 	/* free everything */
