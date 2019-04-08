@@ -75,8 +75,8 @@ void ms_output(){
   unsigned i;
   long long unsigned bits = sizeof(num_type) * 8;
   FILE * f1 = fopen("ms_mutation_table.txt", "w");
-  fprintf(f1, "//\nsegsites: %lu\npositions: ", genotype_size * 8 * sizeof(num_type));
-  for (i = 0; i <  genotype_size * 8 * sizeof(num_type); i++)
+  fprintf(f1, "//\nsegsites: %llu\npositions: ", genotype_size * bits);
+  for (i = 0; i <  genotype_size * bits; i++)
     fprintf(f1, "%u ", i);
   fprintf(f1, "\n");
   unsigned s, j;
@@ -85,11 +85,11 @@ void ms_output(){
       if (Sam_genome[s].geno[i])
         print_binary(Sam_genome[s].geno[i], 1, bits, f1);
       else{
-        for (j = 1; j < bits; j++)
+        for (j = 0; j < bits; j++)
           fprintf(f1, "0");
       }
-      fprintf(f1, "\n");
     }
+    fprintf(f1, "\n");
   }
   fclose(f1);
 }
