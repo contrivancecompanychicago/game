@@ -143,10 +143,10 @@ void game(){
 	unsigned i = 0;
 	while (curr_gen < rounds){
 		/* special event happens during this generation */
-		if (curr_gen % 500 == 0){
-			fprintf(stderr, "Current Generation: %u\n", curr_gen);
-			print_strategies(curr_flag);
-		}
+		// if (curr_gen % 500 == 0){
+		// 	fprintf(stderr, "Current Generation: %u\n", curr_gen);
+		// 	print_strategies(curr_flag);
+		// }
 		if (curr_gen == sample_gen && sample_h != NULL){
 			sampling(sample_h -> num);
 			sample_events * tmp = sample_h;

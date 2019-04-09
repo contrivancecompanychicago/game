@@ -94,7 +94,7 @@ float syn_rate = 0.2;	 			/* determines below which threshold does the strategy 
 predator * set_geno(predator * p, predator * parent1, predator * parent2){
 	/* we first need to see whether a recombination event takes place */
 	double random = ((float)rand()/(float)(RAND_MAX));
-	if (0)//random < recombination_rate)
+	if (random < recombination_rate)
 		p = recombine(p, parent1, parent2);
 	else{
 		random = ((float)rand()/(float)(RAND_MAX));
@@ -204,11 +204,12 @@ void print_predators(unsigned gen, unsigned curr_gen){
 	unsigned i, j = 0;
 	fprintf(f1,"gen: %u(%u) with %u predators\n", curr_gen, gen, gens[gen].num);
 	for (j = 0; j < gens[gen].num; j++){
-		fprintf(f1,"%u [%lf %lf] strat:%u\n", gens[gen].pred[j].strategy, gens[gen].pred[j].xaxis, gens[gen].pred[j].yaxis,
-						gens[gen].pred[j].strategy);
-		for (i = 0; i < genotype_size; i++)
-			fprintf(f1, "%lu\t", gens[gen].pred[j].geno[i]);
-		fprintf(f1,"\n");
+		fprintf(f1, "%u\n", gens[gen].pred[j].strategy);
+		// fprintf(f1,"%u [%lf %lf] strat:%u\n", gens[gen].pred[j].strategy, gens[gen].pred[j].xaxis, gens[gen].pred[j].yaxis,
+		// 				gens[gen].pred[j].strategy);
+		// for (i = 0; i < genotype_size; i++)
+		// 	fprintf(f1, "%lu\t", gens[gen].pred[j].geno[i]);
+		// fprintf(f1,"\n");
 	}
 	fprintf(f1, "\n");
 	fclose(f1);
@@ -224,8 +225,14 @@ predator * init_genotype(predator * p, unsigned pos, unsigned num){
 	gsl_ran_shuffle(r, perm -> data, (size_t)bits, sizeof(size_t) );
 
 	unsigned i;
-	for (i = 0; i < num; i++)
-		p -> geno[pos] +=	1 << (unsigned)perm->data[i];
+	FILE * f1 = fopen("init.txt", "a");
+	fprintf(f1, "%u -- %lu\n", num, p -> geno[pos]);
+	for (i = 0; i < num; i++){
+		p -> geno[pos] += 1 << (unsigned)perm -> data[i];
+		fprintf(f1, "%lu - %u w/ %u\n", p -> geno[pos],(unsigned)perm -> data[i], __builtin_popcount(p -> geno[pos]));
+	}
+	fprintf(f1, "\n");
+	fclose(f1);
 	free(PosOnes);
 	gsl_permutation_free(perm);
 	return p;
@@ -250,47 +257,39 @@ void init_predator(){
 	unsigned i = 0;
 	if (nsyn > 0){ /* user-defined synergistic predators */
 		gens[0].pred[x].strategy = synergy;
-		unsigned tot_num = rand() % (unsigned)(syn_rate * sizeof(num_type) * num_inf * 8);
-		fprintf(stderr, "%u\n", tot_num);
-		gens[0].pred[x].aggro += tot_num;
+		gens[0].pred[x].aggro = 0;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			if (!tot_num)
-				break;
-			num = rand() % tot_num;
-			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
-			tot_num -= num;
+			num = rand() % (unsigned)(sizeof(num_type) * 8 * syn_rate);
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
+			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
-		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
 		nsyn--;
 	}
 	else if (nign > 0){ /* user-defined ignore predators */
-		fprintf(stderr, "nign\n");
 		gens[0].pred[x].strategy = ignore;
-		unsigned tot_num = rand() % (unsigned)round((com_rate - syn_rate) * sizeof(num_type) * num_inf)  + (unsigned)round(syn_rate * sizeof(num_type) * num_inf);
-		gens[0].pred[x].aggro += tot_num;
+		gens[0].pred[x].aggro = 0;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			num = rand() % tot_num;
-			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
-			gens[0].pred[x].aggro += num;
+			num = rand() % (unsigned)round(sizeof(num_type) * 8 * (com_rate - syn_rate))
+			 	  + (unsigned)round(sizeof(num_type) * 8 * syn_rate);
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
+			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
 		nign--;
-		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
 	}
-	else if (ncom > 0){
-		fprintf(stderr, "ncom\n");
+	else if (ncom > 0){ /* user-defined competition predators */
 		gens[0].pred[x].strategy = competition;
-		unsigned tot_num = rand() % (unsigned)round((1.0 - com_rate) * sizeof(num_type) * num_inf) + (unsigned)round(com_rate * sizeof(num_type) * num_inf);
-		gens[0].pred[x].aggro += tot_num;
+		gens[0].pred[x].aggro = 0;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			num = rand() % tot_num;
-			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], i, num);
-			gens[0].pred[x].aggro += num;
+			num = rand() % (unsigned)(sizeof(num_type) * 8 * (1.0 - com_rate))
+					+ (unsigned)round(sizeof(num_type) * 8 * com_rate);
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
+			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
-		ncom--;
 		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
+		ncom--;
 	}
 	else{
 		for (i = 0; i < num_inf; i++){
