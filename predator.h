@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <time.h>
+#include <math.h>
 
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_rng.h>
@@ -16,8 +17,8 @@ typedef uint64_t num_type;
 typedef enum strategy_t{
 	undef, /*default case - not really in the game */
 	synergy,
-	competition,
-	ignore
+	ignore,
+	competition
 }strategy_t;
 
 typedef struct sample_events{
