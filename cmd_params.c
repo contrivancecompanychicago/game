@@ -28,8 +28,6 @@ extern unsigned num_inf;
 
 /*- from strategy_payoff.c -*/
 extern float variance;
-extern float syn_rate;
-extern float com_rate;
 
 bottle * tail = NULL;
 extern sample_events * sample_h;
@@ -154,40 +152,18 @@ unsigned cmd_params(int argc, char** argv){
 			continue;
 		}
 
-	/* --- strategy related command line parameters --- */
 		if ( (!strcmp(argv[i], "-nsyn" ) ) ){
 	 		nsyn = atoi(argv[++i]);
 			continue;
 		}
+
 		if ( (!strcmp(argv[i], "-nign" ) ) ){
 	 		nign = atoi(argv[++i]);
 			continue;
 		}
+
 		if ( (!strcmp(argv[i], "-ncom" ) ) ){
 	 		ncom = atoi(argv[++i]);
-			continue;
-		}
-
-		if ( (!strcmp(argv[i], "-synr" ) ) ){
-			syn_rate = atof(argv[++i]);
-			continue;
-		}
-		if ( (!strcmp(argv[i], "-comr" ) ) ){
-			com_rate = atof(argv[++i]);
-			continue;
-		}
-
-		if ( (!strcmp(argv[i], "-pinf" ) ) ){
-			num_inf = atoi(argv[++i]);
-			PosInfuence = malloc(num_inf * sizeof(unsigned));
-			unsigned x;
-			for (x = 0; x < num_inf; x++)
-				PosInfuence[x] = atoi(argv[++i]);
-			continue;
-		}
-
-		if ( (!strcmp(argv[i], "-size" ) ) ){
-			genotype_size = atoi(argv[++i]);
 			continue;
 		}
 
@@ -198,11 +174,25 @@ unsigned cmd_params(int argc, char** argv){
 			continue;
 		}
 
+		if ( (!strcmp(argv[i], "-size" ) ) ){
+			genotype_size = atoi(argv[++i]);
+			continue;
+		}
+
 		/* determines sample events */
 		if ( (!strcmp(argv[i], "-smpl" ) ) ){
 			unsigned gen = atoi(argv[++i]);
 			unsigned num = atoi(argv[++i]);
 			add_samples(gen, num);
+			continue;
+		}
+
+		if ( (!strcmp(argv[i], "-pinf" ) ) ){
+			num_inf = atoi(argv[++i]);
+			PosInfuence = malloc(num_inf * sizeof(unsigned));
+			unsigned x;
+			for (x = 0; x < num_inf; x++)
+				PosInfuence[x] = atoi(argv[++i]);
 			continue;
 		}
 
