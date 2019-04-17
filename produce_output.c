@@ -8,6 +8,23 @@ extern unsigned genotype_size;
 extern short * MutationEvents;
 
 genome_sample * Sam_genome = NULL;
+extern gsl_rng * r;
+extern unsigned social_choices[3];
+
+void print_strat_percentages(short gen){
+  unsigned i;
+  social_choices[0] = 0;
+  social_choices[1] = 0;
+  social_choices[2] = 0;
+  unsigned tot = gens[gen].num;
+  fprintf(stderr, "%u\n", tot);
+  for (i = 0; i < tot; i++)
+    social_choices[gens[gen].pred[i].strategy - 1]++;
+  FILE * f1 = fopen("strat_percent.txt", "a");
+  fprintf(f1, "%f %f %f\n", (float)social_choices[0] / tot,
+  (float)social_choices[1] / tot, (float)social_choices[2] / tot);
+  fclose(f1);
+}
 
 void print_strategies(unsigned gen){
   unsigned i;
@@ -32,8 +49,12 @@ void print_samples(){
 }
 
 void sampling(unsigned num){
-  unsigned * samplesID = malloc(num * sizeof(unsigned));
-  unsigned sampflag = 0;
+  print_strat_percentages(!curr_flag);
+  return; /* will be removed later */
+  gsl_permutation * perm = gsl_permutation_alloc((size_t)gens[curr_flag].num);
+  gsl_permutation_init(perm);
+  gsl_ran_shuffle(r, perm -> data, (size_t)gens[curr_flag].num, sizeof(size_t));
+
   if (Sam_genome == NULL){
     Sam_genome = malloc(num * sizeof(genome_sample));
     samples = 0;
@@ -41,28 +62,11 @@ void sampling(unsigned num){
   else
     Sam_genome = realloc(Sam_genome, (num + samples) * sizeof(genome_sample));
 
-  unsigned i,j, random;
-  for (i = 0; i < num; i++){
-    sampflag = 0;
-    random = rand() % gens[curr_flag].num;
-    for (j = 0; j < i; j++){
-      if (samplesID[j] == random){
-        sampflag = 1;
-        break;
-      }
-    }
-    if (sampflag){
-      i--;
-      sampflag = 0;
-      continue;
-    }
-    samplesID[i] = random;
-  }
-
+  unsigned i;
   for (i = samples; i < (samples + num); i++){
     Sam_genome[i].geno = malloc(genotype_size * sizeof(num_type));
-    memcpy(Sam_genome[i].geno, gens[curr_flag].pred[samplesID[i - samples]].geno, genotype_size * sizeof(num_type));
-    Sam_genome[i].strategy = gens[curr_flag].pred[samplesID[i - samples]].strategy;
+    memcpy(Sam_genome[i].geno, gens[curr_flag].pred[(unsigned)perm->data[i]].geno, genotype_size * sizeof(num_type));
+    Sam_genome[i].strategy = gens[curr_flag].pred[(unsigned)perm->data[i]].strategy;
     Sam_genome[i].gen = curr_gen;
   }
   samples += num;
@@ -71,10 +75,10 @@ void sampling(unsigned num){
   FILE * f1 = fopen("sampled_strategies.txt","a");
   fprintf(f1, "Gen: %u w/ %u samples\n", curr_gen, samples);
   for (i = samples; i < (samples + num); i++)
-    fprintf(f1, "%u ", gens[curr_flag].pred[samplesID[i - samples]].strategy);
+    fprintf(f1, "%u ", gens[curr_flag].pred[(unsigned)perm->data[i]].strategy);
   fprintf(f1, "\n");
   fclose(f1);
-  free(samplesID);
+  gsl_permutation_free(perm);
 }
 
 /* this is convert otherwise print */
@@ -84,14 +88,16 @@ void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_f
   putc((number & 1) ? '1' : '0', out_file);
 }
 
-//prints the mutation table of the predators in the last generation
 void ms_output(){
   /* we first need to print the general information */
-  FILE * f1 = fopen("ms_mutation_table.txt", "w");
-  fprintf(f1, "//\n");
+  unsigned i;
   long long unsigned bits = sizeof(num_type) * 8;
-  long long unsigned max_segment = genotype_size * 8 * sizeof(num_type) + 1;
-  unsigned s, i, j;
+  FILE * f1 = fopen("ms_mutation_table.txt", "w");
+  fprintf(f1, "//\nsegsites: %llu\npositions: ", genotype_size * bits);
+  for (i = 0; i <  genotype_size * bits; i++)
+    fprintf(f1, "%u ", i);
+  fprintf(f1, "\n");
+  unsigned s, j;
   for (s = 0; s < samples; s++){
     for (i = 0; i < genotype_size; i++){
       if (Sam_genome[s].geno[i])
@@ -100,28 +106,9 @@ void ms_output(){
         for (j = 0; j < bits; j++)
           fprintf(f1, "0");
       }
-      fprintf(f1, "\n");
     }
+    fprintf(f1, "\n");
   }
-
-  // fprintf(f1, "//\nsegsites: %d\npositions: ", (mut));   // <--- this is tricky AF
-  // for (i = 0; i < mut; i++){ /* print the positions where the mutation occcured */
-  //   if (poly[i])
-  //     fprintf(f1, "%lf ", ( mut_pos[i] / (float)() ));
-  // }
-  //
-  // unsigned bit_num = sizeof(num_type)*8;
-  // unsigned s, i, j;
-  // for (s = 0; s < samples; s++){ /* check every sample for mutations and print them */
-  //   for (i = 0; i < genotype_size; i++)
-  //     if (MutationEvents[i]) /* if there is at least a bit with a value of '1' */
-  //       print_binary(gens[curr_flag], 0, bit_num, f1);                      // ????? is it curr_flag ?????
-  //     else{ /* no need to convert to binary we already know it's 0s in every position */
-  //       for (j = 0; j < bit_num; j++)
-  //         fprintf(f1, "0");
-  //     }
-  //   fprintf(f1, "\n");
-  // }
   fclose(f1);
 }
 
@@ -139,7 +126,3 @@ void free_samples(){
     free(Sam_genome[i].geno);
   free(Sam_genome);
 }
-/*
-Αν έχω ancestral sampling δεν μπορώ να εκτυπώνω μόνο τις 64-αδες με το mutation διότι θα προστεθούν πιθανώς κι άλλες.
-ΤΑ POSITIONS ΕΙΝΑΙ ΘΕΜΑ, όπως κι ο αριθμός γιατί δεν τα ξέρω πριν μπω στη διαδικασία να εκτυπώσω το mutation_table.
-*/

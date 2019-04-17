@@ -15,9 +15,11 @@ typedef struct genome_sample{
 	num_type * geno;
 }genome_sample;
 
+void print_strat_percentages(short gen);
+
 void sampling(unsigned num);
 
-void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_file);
+void print_binary(num_type number, unsigned counter, unsigned max, FILE * out_file);
 
 void ms_output();
 void vcf_output();

@@ -22,11 +22,44 @@ float syn_rate = 0.2;	 			/* determines below which threshold does the strategy 
 extern generation * gens;
 extern unsigned curr_flag;
 extern gsl_rng * r;
+extern short byte2bit;
+
+num_type syn_mask;
+num_type ign_mask;
+num_type com_mask;
+
+/* ----- different areas of the genotype effecting different strategies ----- */
+void set_masks(){
+	num_type all_ones = ~0;	/* complementary number of zero */
+	unsigned s = syn_rate * sizeof(num_type) * 4; /* how many '1's mask the synergy part */
+	unsigned c = (1 - com_rate) * sizeof(num_type) * 4; /* how many '1's mask the competition part */
+  unsigned tot = __builtin_popcount(all_ones);
+  num_type syn_mask, ign_mask, com_mask;
+	syn_mask = all_ones << (tot - s);
+	ign_mask = all_ones << s ^ syn_mask;
+	com_mask = (1 << c) - 1;
+}
+
+strategy_t choose_strategy_mask(predator * p){
+	unsigned syn_count, ign_count, com_count, i = 0;
+	for (i = 0; i < num_inf; i++){
+		syn_count += __builtin_popcount(syn_mask & p -> geno[i]);
+		ign_count += __builtin_popcount(ign_mask & p -> geno[i]);
+		com_count += __builtin_popcount(com_mask & p -> geno[i]);
+	}
+	unsigned sum = syn_count + ign_count + com_count;
+	unsigned random = rand() % sum;
+	if (sum < syn_count)
+		return synergy;
+	if (sum < ign_count)
+		return ignore;
+	return competition;
+}
 
 strategy_t choose_strategy(unsigned aggro){ /* chooses the strategy each predator will follow */
-	double ph = (double)aggro/(double)(num_inf * sizeof(num_type) * 8);
+	double ph = (double)aggro/(double)(num_inf * sizeof(num_type) * byte2bit);
 	double flex_geno = ph + gsl_ran_gaussian(r, variance);
-	if (flex_geno > com_rate)
+	if (flex_geno >= com_rate)
 		return competition;
 	if (flex_geno < syn_rate)
 		return synergy;
@@ -100,11 +133,11 @@ void grant_payoff(prey * p){
 		fprintf(stderr,"payoff %u %u\n", p -> id, p -> num);
 		return;
 	}
-	payoff_matrix[synergy -1] = synergy_payoff(p -> value);
+	payoff_matrix[synergy - 1] = synergy_payoff(p -> value);
 	payoff_matrix[competition - 1] = competition_payoff(p -> value);
-	payoff_matrix[ignore-1] = ignore_payoff(p -> value);
+	payoff_matrix[ignore - 1] = ignore_payoff(p -> value);
 
 	unsigned i;
 	for (i = 0; i < p -> num; i++)
-		gens[!curr_flag].pred[p -> pred_index[i]].fitness = payoff_matrix[gens[!curr_flag].pred[p -> pred_index[i]].strategy -1];
+		gens[!curr_flag].pred[p -> pred_index[i]].fitness = payoff_matrix[gens[!curr_flag].pred[p -> pred_index[i]].strategy - 1];
 }

@@ -12,21 +12,25 @@ extern unsigned social_choices[3];
 extern float payoff_matrix[3];
 extern float tot_fit;
 
+extern float com_rate;
+extern float syn_rate;
+
 extern strategy_t choose_strategy(unsigned aggro);
 extern float variance;
 
 extern unsigned rounds;
 extern gsl_rng * r;
+extern short byte2bit;
 
-double recombination_rate = 0.1;
-double mutation_rate = 0.3;
+double recombination_rate = 0.0001;
+double mutation_rate = 0.01;
 short * MutationEvents;
 
 unsigned num_inf = 0;					/* number of 64-sized genome segments that influence strategy */
 unsigned * PosInfuence; 			/* which those 64-sized segments are */
 
-/* ------ genotype expression ------ */
-unsigned genotype_size = 5; 	/* determines how many bases affect the strategy of each predator */
+/* ------- genotype expression ------ */
+unsigned genotype_size = 10; 	/* determines how many bases affect the strategy of each predator */
 unsigned migration_size = 5;	/* determines how many bases affect the migration pattern of each predator */
 /* ---------------------------------- */
 char const_size = 0; 					/* determines whether the number of predators remains constant in each generation */
@@ -44,7 +48,6 @@ double mean(double x, double y){
 }
 
 void print_genotype(predator * p){
-
 	FILE * f1 = fopen("genotype.txt", "a");
 	unsigned i;
 	for (i = 0; i < genotype_size; i++)
@@ -55,30 +58,27 @@ void print_genotype(predator * p){
 
 predator * recombine(predator * p, predator * parent1, predator * parent2){
 	unsigned cutting_point = rand() % genotype_size; /* determine where the recombination happened */
-	p -> geno = (num_type *)malloc(sizeof(num_type) * genotype_size);
 	num_type left, right;
 	if (rand() / (double)RAND_MAX < 0.5){ /* parent1 gives the left part */
-		memcpy(p -> geno, parent1 -> geno, (cutting_point + 1) * sizeof(num_type));
-		if (cutting_point != genotype_size - 1)
-			memcpy(p -> geno + (cutting_point + 1)*sizeof(num_type), parent2 -> geno + (cutting_point + 1)*sizeof(num_type),
-		 (genotype_size - cutting_point - 2) * sizeof(num_type));
-		 left = parent1 -> geno[cutting_point + 1];
-		 right = parent2 -> geno[cutting_point + 1];
+		memcpy(p -> geno, parent2 -> geno, genotype_size * sizeof(num_type));
+		if (cutting_point != 0)
+			memcpy(p -> geno, parent1 -> geno, (cutting_point + 1) * sizeof(num_type));
+		left = parent1 -> geno[cutting_point];
+		right = parent2 -> geno[cutting_point];
 	}
 	else{
 		memcpy(p -> geno, parent2 -> geno, (cutting_point + 1) * sizeof(num_type));
-		if (cutting_point != genotype_size - 1)
-			memcpy(p -> geno + (cutting_point + 1)*sizeof(num_type), parent1 -> geno + (cutting_point + 1)*sizeof(num_type),
-			 (genotype_size - cutting_point - 2) * sizeof(num_type));
-			 left = parent2 -> geno[cutting_point + 1];
-			 right = parent1 -> geno[cutting_point + 1];
+		if (cutting_point != 0)
+			memcpy(p -> geno, parent1 -> geno, genotype_size * sizeof(num_type));
+		left = parent2 -> geno[cutting_point];
+		right = parent1 -> geno[cutting_point];
 	}
 
 	/* now we need to recombine the cutting point */
 	unsigned cut_base = rand() % (sizeof(num_type) * 8);
 	left = left >> cut_base << cut_base;
 	right = right << (63 - cut_base) >> ((sizeof(num_type) * 8) - cut_base);
-	p -> geno[cutting_point + 1] = left | right;
+	p -> geno[cutting_point] = left | right;
 	p -> aggro = 0;
 	unsigned i;
 	for (i = 0; i < num_inf; i++){
@@ -91,7 +91,7 @@ predator * recombine(predator * p, predator * parent1, predator * parent2){
 predator * set_geno(predator * p, predator * parent1, predator * parent2){
 	/* we first need to see whether a recombination event takes place */
 	double random = ((float)rand()/(float)(RAND_MAX));
-	if (0)//random < recombination_rate)
+	if (random < recombination_rate)
 		p = recombine(p, parent1, parent2);
 	else{
 		random = ((float)rand()/(float)(RAND_MAX));
@@ -167,11 +167,6 @@ predator * choose_parents(predator * p){
 	return p;
 }
 
-
-predator * choose_burnin_parents(predator * p){
-
-}
-
 void add_burnin_predator(unsigned num){
 	gens[curr_flag].pred[num].fitness = 0.0; /* is determined after the game */
 	unsigned parent1, parent2 = 0;
@@ -206,17 +201,36 @@ void print_predators(unsigned gen, unsigned curr_gen){
 	unsigned i, j = 0;
 	fprintf(f1,"gen: %u(%u) with %u predators\n", curr_gen, gen, gens[gen].num);
 	for (j = 0; j < gens[gen].num; j++){
-		fprintf(f1,"%u [%lf %lf] %f\n", gens[gen].pred[j].strategy, gens[gen].pred[j].xaxis, gens[gen].pred[j].yaxis,
-						gens[gen].pred[j].fitness);
-		for (i = 0; i < genotype_size; i++)
-			fprintf(f1, "%lu\t", gens[gen].pred[j].geno[i]);
-		fprintf(f1,"\n");
+		fprintf(f1, "%u ", gens[gen].pred[j].strategy);
+		// fprintf(f1,"[%lf %lf] strat:%u\n", gens[gen].pred[j].xaxis, gens[gen].pred[j].yaxis, gens[gen].pred[j].strategy);
+		// for (i = 0; i < genotype_size; i++)
+		// 	fprintf(f1, "%lu\t", gens[gen].pred[j].geno[i]);
+		// fprintf(f1,"\n");
 	}
 	fprintf(f1, "\n");
 	fclose(f1);
 }
 
 /* ------------------ */
+predator * init_genotype(predator * p, unsigned pos, unsigned num){
+	unsigned bits = (sizeof(num_type)*byte2bit);
+	gsl_permutation * perm = gsl_permutation_alloc((size_t)bits);
+	gsl_permutation_init(perm);
+	gsl_ran_shuffle(r, perm -> data, (size_t)bits, sizeof(size_t) );
+
+	unsigned i;
+	FILE * f1 = fopen("init.txt", "a");
+	fprintf(f1, "%u -- %lu\n", num, p -> geno[pos]);
+	for (i = 0; i < num; i++){
+		p -> geno[pos] += 1 << (unsigned)perm -> data[i];
+		fprintf(f1, "%lu - %u w/ %u\n", p -> geno[pos],(unsigned)perm -> data[i], __builtin_popcount(p -> geno[pos]));
+	}
+	fprintf(f1, "\n");
+	fclose(f1);
+	gsl_permutation_free(perm);
+	assert(num == __builtin_popcount(p -> geno[pos]) );
+	return p;
+}
 
 void init_predator(){
 	unsigned x = gens[0].num;
@@ -235,31 +249,47 @@ void init_predator(){
 	gens[0].pred[x].geno = calloc(sizeof(num_type), genotype_size);
 	gens[0].pred[x].aggro = 0;
 	unsigned i = 0;
+	unsigned bits = sizeof(num_type) * byte2bit;
 	if (nsyn > 0){ /* user-defined synergistic predators */
+		unsigned num;
 		gens[0].pred[x].strategy = synergy;
+		gens[0].pred[x].aggro = 0;
+		for (i = 0; i < num_inf; i++){
+			num = rand() % (unsigned)(bits * syn_rate);
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
+			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+		}
+		//gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
 		nsyn--;
-		for (i = 0; i < num_inf; i++)
-			gens[0].pred[x].geno[PosInfuence[i]] = 0;
 	}
-	else if (nign > 0){
+	else if (nign > 0){ /* user-defined ignore predators */
 		gens[0].pred[x].strategy = ignore;
+		gens[0].pred[x].aggro = 0;
+		unsigned num;
+		for (i = 0; i < num_inf; i++){
+			num = rand() % (unsigned)round(bits * (com_rate - syn_rate))
+			 	  + (unsigned)round(bits * syn_rate);
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
+			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+		}
+		//gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
 		nign--;
-		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = MAXIMUM >> 6;
-			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
-		}
 	}
-	else if (ncom > 0){
+	else if (ncom > 0){ /* user-defined competition predators */
 		gens[0].pred[x].strategy = competition;
-		ncom--;
+		gens[0].pred[x].aggro = 0;
+		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = 1 << 31;
+			num = (unsigned)(bits - rand() % (unsigned)(bits * (1.0 - com_rate)));
+			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
 			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
+		//gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
+		ncom--;
 	}
 	else{
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = rand() % MAXIMUM;
+			gens[0].pred[x].geno[PosInfuence[i]] = (unsigned long long)rand() % MAXIMUM;
 			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
 		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);

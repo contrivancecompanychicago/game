@@ -19,7 +19,7 @@ extern unsigned cram;
 extern unsigned genotype_size;
 extern unsigned * PosInfuence;
 extern unsigned num_inf;
-extern unsigned * MutationEvents;
+extern short * MutationEvents;
 extern double ** FitMap;
 char pop_change = '0';
 unsigned fit_size;
@@ -29,6 +29,7 @@ extern void sampling(unsigned num);
 extern void print_samples();
 extern void free_samples();
 extern void print_strategies(unsigned gen);
+extern void print_strat_percentages(short gen);
 
 extern void ms_output();
 sample_events * sample_h = NULL;
@@ -52,6 +53,8 @@ extern prey * prey_array;
 /* population size change */
 unsigned first_event = -1; 			/* marks the generation for which the tree is pruned */
 bottle * bottle_h = NULL;
+
+short byte2bit = 4; /* depends on whether you have a 32 or a 64bit architecture */
 
 void play(prey * p){
 	find_in_range(p, !curr_flag);
@@ -143,10 +146,10 @@ void game(){
 	unsigned i = 0;
 	while (curr_gen < rounds){
 		/* special event happens during this generation */
-		if (curr_gen % 500 == 0){
-			fprintf(stderr, "Current Generation: %u\n", curr_gen);
-			print_strategies(curr_flag);
-		}
+		// if (curr_gen % 500 == 0){
+		// 	fprintf(stderr, "Current Generation: %u\n", curr_gen);
+		// 	print_strategies(curr_flag);
+		// }
 		if (curr_gen == sample_gen && sample_h != NULL){
 			sampling(sample_h -> num);
 			sample_events * tmp = sample_h;
@@ -154,13 +157,11 @@ void game(){
 			free(tmp);
 			if (sample_h != NULL)
 				sample_gen = sample_h -> gen;
-			print_samples();
 		}
 		if (curr_gen == first_event)
 			change_population_size();
 		else if(pop_change != '0')
 			change_fit_population_size();
-
 
 		gens[curr_flag].num = 0;
 		tot_fit = 0.0;
@@ -185,23 +186,14 @@ void freedom(){
 	free_prey();
 	free(PosInfuence);
 	free(MutationEvents);
-	free_samples();
+	//free_samples();
 	free(People);
 	gsl_rng_free(r);
 }
 
-int main(int argc, char** argv){
-	unsigned seed = cmd_params(argc, argv);
+/* ---- initialization step ------ */
+void initialize(){
 
-	srand(seed);
-	const gsl_rng_type * T;
-	gsl_rng_env_setup();
-	T = gsl_rng_default;
-	r = gsl_rng_alloc(T);
-	gsl_rng_set(r, seed);
-	clock_t start = clock();
-
-	/* ---- initialization step ------ */
 	gens = calloc(2, sizeof(generation)); /* we only need the current and the previous generation */
 	fit_size = pred_num;
 	People = calloc(rounds + 1, sizeof(unsigned));
@@ -210,11 +202,18 @@ int main(int argc, char** argv){
 	if (!num_inf){
 		num_inf = 1;
 		PosInfuence = malloc(sizeof(unsigned));
-		PosInfuence[0] = rand()% genotype_size;
+		PosInfuence[0] = rand() % genotype_size;
 	}
 	unsigned i;
+
+	/* sets the header for an output file */
+	FILE * sp = fopen("strat_percent.txt", "a");
+	fprintf(sp, "Synergy Ignore Competition\n");
+	fclose(sp);
+
 	for (i = 0; i < pred_num; i++)
 		init_predator();
+	print_strat_percentages(!curr_flag);
 
 	/* ---- init generation 1 (no values assigned)---- */
 	gens[1].pred = malloc(pred_num * sizeof(predator));
@@ -223,17 +222,30 @@ int main(int argc, char** argv){
 	MutationEvents = calloc(genotype_size, sizeof(short));
 	/* ---- we now create the map containing the fitness of each pair of predators */
 
-	burn_in();
+}
 
+int main(int argc, char ** argv){
+	unsigned seed = cmd_params(argc, argv);
+	srand(seed);
+	const gsl_rng_type * T;
+	gsl_rng_env_setup();
+	T = gsl_rng_default;
+	r = gsl_rng_alloc(T);
+	gsl_rng_set(r, seed);
+	clock_t start = clock();
+
+	initialize();
+	burn_in();
+	print_strat_percentages(!curr_flag);
 	allocate_fitness_table();
 	/* actually play the game */
 	game();
 
 	/* we now sample predators and print the mutation table */
-	//assert(samples <= pred_num);
-	// if (sample_h != NULL) /* final sampling event */
-  // 	sampling(sample_h -> num);
-	ms_output();
+	assert(samples <= pred_num);
+	if (sample_h != NULL) /* final sampling event */
+  	sampling(sample_h -> num);
+	//ms_output();
 
 	/* free everything */
 	freedom();
