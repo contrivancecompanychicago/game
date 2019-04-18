@@ -10,6 +10,7 @@ extern short * MutationEvents;
 genome_sample * Sam_genome = NULL;
 extern gsl_rng * r;
 extern unsigned social_choices[3];
+extern short byte2bit;
 
 void print_strat_percentages(short gen){
   unsigned i;
@@ -17,7 +18,6 @@ void print_strat_percentages(short gen){
   social_choices[1] = 0;
   social_choices[2] = 0;
   unsigned tot = gens[gen].num;
-  fprintf(stderr, "%u\n", tot);
   for (i = 0; i < tot; i++)
     social_choices[gens[gen].pred[i].strategy - 1]++;
   FILE * f1 = fopen("strat_percent.txt", "a");
@@ -91,7 +91,7 @@ void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_f
 void ms_output(){
   /* we first need to print the general information */
   unsigned i;
-  long long unsigned bits = sizeof(num_type) * 8;
+  long long unsigned bits = sizeof(num_type) * byte2bit;
   FILE * f1 = fopen("ms_mutation_table.txt", "w");
   fprintf(f1, "//\nsegsites: %llu\npositions: ", genotype_size * bits);
   for (i = 0; i <  genotype_size * bits; i++)
@@ -121,6 +121,8 @@ void vcf_output(){
 }
 
 void free_samples(){
+  if (Sam_genome = NULL)
+    return;
   unsigned i;
   for (i = 0; i < samples; i++)
     free(Sam_genome[i].geno);

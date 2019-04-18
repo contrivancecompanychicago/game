@@ -10,6 +10,16 @@
 
 #include "predator.h"
 
+/* an event regarding a change in preys that will take place during a certain generation */
+typedef struct prey_event{
+	char ev_type; /* what type of event it is. 0 ~ remove ~ 1 add ??? */
+	unsigned generation;
+	float xaxis;
+	float yaxis;
+	struct prey_event * next;
+}prey_event;
+
+/* sets a specific position for some preys */
 typedef struct prey_pos{
 	double x;
 	double y;

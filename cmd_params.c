@@ -34,6 +34,9 @@ extern float com_rate;
 bottle * tail = NULL;
 extern sample_events * sample_h;
 sample_events * sample_t;
+extern prey_event * preyev_h;
+prey_event * preyev_t;
+
 
 void add_prey_pos(float x, float y){
 	if (posh == NULL){ /* first entry */
@@ -48,8 +51,27 @@ void add_prey_pos(float x, float y){
 	tmp -> x = x;
 	tmp -> y = y;
 	tmp -> next = NULL;
-	posh -> next = tmp;
+	post -> next = tmp;
 	post = tmp;
+}
+
+void add_prey_event(char * type, unsigned gen, float x, float y){
+	prey_event * tmp = malloc(sizeof(prey_event));
+	if (!strcmp(type, "add"))
+		tmp -> ev_type = '0';
+	else
+		tmp -> ev_type = '1';
+	tmp -> gen = gen;
+	tmp -> xaxis = x;
+	tmp -> yaxis = y;
+	tmp -> next = NULL;
+	if (preyev_h == NULL){ /* first entry */
+		preyev_h = tmp;
+		preyev_t = tmp;
+		return;
+	}
+	preyev_t -> next = tmp;
+	preyev_t = preyev_t -> next;
 }
 
 /* bottleneck events */
@@ -153,6 +175,12 @@ unsigned cmd_params(int argc, char** argv){
 			 user_prey++;
 			continue;
 		}
+
+		if ( (!strcmp(argv[i], "-evnt" ) ) ){
+			 add_prey_event(argv[++i], atoi(argv[++i]), atof(argv[++i]), atof(argv[++i]));
+			continue;
+		}
+
 
 	/* --- strategy related command line parameters --- */
 		if ( (!strcmp(argv[i], "-nsyn" ) ) ){

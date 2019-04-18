@@ -74,17 +74,24 @@ void init_preys(){
 }
 /* ---------------------------------------------------- */
 
+void add_prey(){
+	// at prey event maybe either add or remove X number of preys.\
+	// Maybe specific ones based on position. Otherwise -1 -1
+
+
+}
+
 void enable_trigger(){ /* the trigger that is enabled is always the first */
-	// unsigned i;
-	// for ( i = 0; i < triggerlist -> prey_num; i++) /* we add as many preys as the trigger suggests */
-	// 	add_prey();
-	// if (triggerlist -> next == NULL) /* sole trigger */
-	// 	free(triggerlist);
-	// else{
-	// 	trigger * tmp = triggerlist;
-	// 	triggerlist = triggerlist -> next;
-	// 	free(tmp);
-	// }
+	unsigned i;
+	for ( i = 0; i < triggerlist -> prey_num; i++) /* we add as many preys as the trigger suggests */
+		add_prey();
+	if (triggerlist -> next == NULL) /* sole trigger */
+		free(triggerlist);
+	else{
+		trigger * tmp = triggerlist;
+		triggerlist = triggerlist -> next;
+		free(tmp);
+	}
 }
 
 void set_new_trigger(){ /* at that moment(round - generation) in time a new prey will be added */

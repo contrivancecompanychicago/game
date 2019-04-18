@@ -12,6 +12,7 @@ extern unsigned prey_num;
 /* --- from predator.c --- */
 extern void add_burnin_predator(unsigned num);
 extern void init_pred();
+extern void init_predator_probabilistic();
 extern unsigned pred_num;
 extern char const_size;
 extern unsigned * People; 			/* number of predators in each generation */
@@ -23,6 +24,9 @@ extern short * MutationEvents;
 extern double ** FitMap;
 char pop_change = '0';
 unsigned fit_size;
+
+/* --- from strategy_payoff.c --- */
+extern void set_masks();
 
 /* --- from produce_output.c --- */
 extern void sampling(unsigned num);
@@ -211,8 +215,9 @@ void initialize(){
 	fprintf(sp, "Synergy Ignore Competition\n");
 	fclose(sp);
 
+	set_masks();
 	for (i = 0; i < pred_num; i++)
-		init_predator();
+		init_predator_probabilistic();
 	print_strat_percentages(!curr_flag);
 
 	/* ---- init generation 1 (no values assigned)---- */
@@ -242,7 +247,7 @@ int main(int argc, char ** argv){
 	game();
 
 	/* we now sample predators and print the mutation table */
-	assert(samples <= pred_num);
+	//assert(samples <= pred_num);
 	if (sample_h != NULL) /* final sampling event */
   	sampling(sample_h -> num);
 	//ms_output();
@@ -256,6 +261,6 @@ int main(int argc, char ** argv){
 	FILE * f1 = fopen("seed_time.txt", "a");
 	fprintf(f1,"----------------------\n seed: %d in %f seconds \n",seed, seconds);
 	fclose(f1);
-	printf ("\nALL DONE in %f\n", seconds);
+	fprintf (stderr, "\nALL DONE in %f\n", seconds);
 	return 0;
 }

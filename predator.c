@@ -16,6 +16,7 @@ extern float com_rate;
 extern float syn_rate;
 
 extern strategy_t choose_strategy(unsigned aggro);
+extern strategy_t choose_strategy_mask(num_type * geno);
 extern float variance;
 
 extern unsigned rounds;
@@ -289,9 +290,78 @@ void init_predator(){
 	}
 	else{
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = (unsigned long long)rand() % MAXIMUM;
+			gens[0].pred[x].geno[PosInfuence[i]] = (num_type)rand() % MAXIMUM;
 			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
 		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
+	}
+}
+
+
+void init_predator_probabilistic(){
+  unsigned x = gens[0].num;
+	if (gens[0].pred == NULL){ /* first entry in the current generation */
+		gens[0].pred = malloc(pred_num * sizeof(predator));
+		gens[0].num = 0;
+		x = 0;
+	}
+
+	gens[0].pred[x].fitness = 0.0; /* is determined after the game */
+	gens[0].pred[x].xaxis = ((double)rand()/(double)RAND_MAX) * dimension;
+	gens[0].pred[x].yaxis = ((double)rand()/(double)RAND_MAX) * dimension;
+	gens[0].num++;
+
+	/* now we need to initialize both the genotype and the strategy */
+	gens[0].pred[x].geno = calloc(sizeof(num_type), genotype_size);
+	gens[0].pred[x].aggro = 0;
+	unsigned i = 0;
+  unsigned bits = sizeof(num_type) * byte2bit;
+
+  /* --- here start the differences with the other implementation */
+
+  if (nsyn > 0){ /* user-defined synergistic predators */
+		num_type tot = __builtin_popcount(~0);
+		num_type num;
+    gens[0].pred[x].strategy = synergy;
+    gens[0].pred[x].aggro = 0;
+    for (i = 0; i < num_inf; i++){
+      num = rand() % (num_type)(bits * syn_rate);
+      gens[0].pred[x].geno[PosInfuence[i]] = num << (num_type)(tot - bits * syn_rate);
+      gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+    }
+		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
+    nsyn--;
+  }
+  else if (nign > 0){ /* user-defined ignore predators */
+    gens[0].pred[x].strategy = ignore;
+    gens[0].pred[x].aggro = 0;
+    num_type num;
+    for (i = 0; i < num_inf; i++){
+      num = rand() % (num_type)round(bits * (com_rate - syn_rate))
+          + (num_type)round(bits * syn_rate);
+      gens[0].pred[x].geno[PosInfuence[i]] = num << (num_type)(bits * syn_rate);
+      gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+    }
+		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
+    nign--;
+  }
+  else if (ncom > 0){ /* user-defined competition predators */
+    gens[0].pred[x].strategy = competition;
+    gens[0].pred[x].aggro = 0;
+    num_type num;
+    for (i = 0; i < num_inf; i++){
+      num = (num_type)rand() % (num_type)(bits * (1.0 - com_rate));
+      gens[0].pred[x].geno[PosInfuence[i]] = num;
+      gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+    }
+		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
+    ncom--;
+	}
+	else{
+		for (i = 0; i < num_inf; i++){
+			gens[0].pred[x].geno[PosInfuence[i]] = (num_type)rand() % MAXIMUM;
+			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
+		}
+		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
 	}
 }

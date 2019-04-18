@@ -15,6 +15,7 @@ float variance = 0.2; 			/* variance from the inherited to the actually strategy
 unsigned social_choices[3];
 float payoff_matrix[3];
 
+extern unsigned * PosInfuence; 			/* which those 64-sized segments are */
 extern unsigned num_inf;
 float com_rate = 0.8;	 			/* determines below which threshold does the strategy become competitive */
 float syn_rate = 0.2;	 			/* determines below which threshold does the strategy become synergetic */
@@ -28,30 +29,37 @@ num_type syn_mask;
 num_type ign_mask;
 num_type com_mask;
 
+extern void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_file);
+
 /* ----- different areas of the genotype effecting different strategies ----- */
 void set_masks(){
 	num_type all_ones = ~0;	/* complementary number of zero */
-	unsigned s = syn_rate * sizeof(num_type) * 4; /* how many '1's mask the synergy part */
-	unsigned c = (1 - com_rate) * sizeof(num_type) * 4; /* how many '1's mask the competition part */
-  unsigned tot = __builtin_popcount(all_ones);
-  num_type syn_mask, ign_mask, com_mask;
+	num_type s = syn_rate * sizeof(num_type) * byte2bit; /* how many '1's mask the synergy part */
+	num_type c = (1 - com_rate) * sizeof(num_type) * byte2bit; /* how many '1's mask the competition part */
+  num_type tot = __builtin_popcount(all_ones);
 	syn_mask = all_ones << (tot - s);
 	ign_mask = all_ones << s ^ syn_mask;
 	com_mask = (1 << c) - 1;
 }
 
-strategy_t choose_strategy_mask(predator * p){
-	unsigned syn_count, ign_count, com_count, i = 0;
+strategy_t choose_strategy_mask(num_type * geno){
+	unsigned syn_count = 0;
+	unsigned ign_count = 0;
+	unsigned com_count = 0;
+	unsigned i;
+	assert(geno);
 	for (i = 0; i < num_inf; i++){
-		syn_count += __builtin_popcount(syn_mask & p -> geno[i]);
-		ign_count += __builtin_popcount(ign_mask & p -> geno[i]);
-		com_count += __builtin_popcount(com_mask & p -> geno[i]);
+		syn_count += __builtin_popcount(syn_mask & geno[PosInfuence[i]]);
+		ign_count += __builtin_popcount(ign_mask & geno[PosInfuence[i]]);
+		com_count += __builtin_popcount(com_mask & geno[PosInfuence[i]]);
 	}
 	unsigned sum = syn_count + ign_count + com_count;
+	if (sum == 0)
+		return rand() % 3 + 1; /* returns a random strategy */
 	unsigned random = rand() % sum;
-	if (sum < syn_count)
+	if (random <= syn_count)
 		return synergy;
-	if (sum < ign_count)
+	if (random < ign_count)
 		return ignore;
 	return competition;
 }
