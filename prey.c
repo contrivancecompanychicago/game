@@ -74,53 +74,47 @@ void init_preys(){
 }
 /* ---------------------------------------------------- */
 
-void add_prey(){
-	// at prey event maybe either add or remove X number of preys.\
-	// Maybe specific ones based on position. Otherwise -1 -1
-
-
-}
-
-void enable_trigger(){ /* the trigger that is enabled is always the first */
-	unsigned i;
-	for ( i = 0; i < triggerlist -> prey_num; i++) /* we add as many preys as the trigger suggests */
-		add_prey();
-	if (triggerlist -> next == NULL) /* sole trigger */
-		free(triggerlist);
-	else{
-		trigger * tmp = triggerlist;
-		triggerlist = triggerlist -> next;
-		free(tmp);
-	}
-}
-
-void set_new_trigger(){ /* at that moment(round - generation) in time a new prey will be added */
-	unsigned re_entry_time = curr_gen  + (rand() % (max_penalty - min_penalty) + min_penalty); /* calculate the re-entrance time slot */
-	if (triggerlist == NULL){
-		triggerlist = malloc(sizeof(trigger));
-		triggerlist -> entry_time = re_entry_time;
-		triggerlist -> prey_num = 1;
-		triggerlist -> next = NULL;
+void prey_event_remove(float xaxis, float yaxis){
+	fprintf(stderr, "remove\n");
+	if (xaxis == -1.0){ /* event calls for a random prey removal */
+		remove_prey(rand() % prey_num);
 		return;
 	}
-	trigger * tmp = triggerlist;
-	while (tmp -> next != NULL && tmp -> entry_time < re_entry_time)
-		tmp = tmp -> next;
-	if (tmp -> entry_time == re_entry_time) /* another trigger set at the same round */
-		tmp -> prey_num++;
-	else{ /* first trigger on that round */
-		trigger * t = malloc(sizeof(trigger));
-		t -> entry_time = re_entry_time;
-		t -> prey_num = 1;
-		t -> next = tmp -> next;
-		tmp -> next = t;
+	unsigned i;
+	for (i = 0; i < prey_num; i++){
+		if (prey_array[i].xaxis == xaxis && prey_array[i].yaxis == yaxis)
+			remove_prey(i);
 	}
+}
+
+void prey_event_add(float xaxis, float yaxis){
+	fprintf(stderr, "add\n");
+	prey_array = realloc(prey_array, (prey_num + 1) * sizeof(prey));
+	prey_array[prey_num].id = prey_array[prey_num - 1].id + 1;
+	prey_array[prey_num].value = 1;
+	prey_array[prey_num].num = 0;
+	if (xaxis != -1) /* non-random co-ordinates */
+		prey_array[prey_num].xaxis = xaxis;
+	else
+		prey_array[prey_num].xaxis = dimension * (rand() / (float)RAND_MAX);
+		if (yaxis != -1) /* non-random co-ordinates */
+			prey_array[prey_num].yaxis = yaxis;
+		else
+			prey_array[prey_num].yaxis = dimension * (rand() / (float)RAND_MAX);
+	prey_array[prey_num].pred_index = NULL;
+	prey_num++;
 }
 
 /* -------------- deplete & remove start -------------- */
 
-void remove_prey(unsigned pid){
-
+void remove_prey(unsigned pos){
+	/* "swap" the to-be-removed prey with the last one */
+	unsigned i = prey_num - 1;
+	prey_array[pos].value = prey_array[i].value;
+	prey_array[pos].xaxis = prey_array[i].xaxis;
+	prey_array[pos].yaxis = prey_array[i].yaxis;
+	prey_num--; /* we don't really realloc the vector we just don't read the whole things */
+	prey_array = realloc(prey_array, (prey_num) * sizeof(prey));
 }
 
 void deplete_prey(prey * p){ /* we reduct the preys value due to too many predators feasting upon it */

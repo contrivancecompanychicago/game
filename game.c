@@ -35,6 +35,9 @@ extern void free_samples();
 extern void print_strategies(unsigned gen);
 extern void print_strat_percentages(short gen);
 
+extern void prey_event_add(float xaxis, float yaxis);
+extern void prey_event_remove(float xaxis, float yaxis);
+
 extern void ms_output();
 sample_events * sample_h = NULL;
 unsigned samples = 10;
@@ -53,6 +56,7 @@ extern float tot_fit;
 
 generation * gens = NULL; 			/* store predators in each generation */
 extern prey * prey_array;
+prey_event * preyev_h = NULL;
 
 /* population size change */
 unsigned first_event = -1; 			/* marks the generation for which the tree is pruned */
@@ -166,6 +170,18 @@ void game(){
 			change_population_size();
 		else if(pop_change != '0')
 			change_fit_population_size();
+		if (preyev_h != NULL && curr_gen == preyev_h -> gen){
+			print_preys();
+			fprintf(stderr, "here\n");
+			if (preyev_h -> ev_type == 0)
+				prey_event_remove(preyev_h -> xaxis, preyev_h -> yaxis);
+			else
+				prey_event_add(preyev_h -> xaxis, preyev_h -> yaxis);
+			prey_event * tmp_ev = preyev_h;
+			preyev_h = preyev_h -> next;
+			free(tmp_ev);
+			print_preys();
+		}
 
 		gens[curr_flag].num = 0;
 		tot_fit = 0.0;

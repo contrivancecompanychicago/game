@@ -37,7 +37,6 @@ sample_events * sample_t;
 extern prey_event * preyev_h;
 prey_event * preyev_t;
 
-
 void add_prey_pos(float x, float y){
 	if (posh == NULL){ /* first entry */
 		posh = malloc(sizeof(prey_pos));
@@ -55,16 +54,15 @@ void add_prey_pos(float x, float y){
 	post = tmp;
 }
 
-void add_prey_event(char * type, unsigned gen, float x, float y){
+void add_prey_event(int type, int gen, float x, float y){
+	fprintf(stderr, "%u %u\n", type, gen);
 	prey_event * tmp = malloc(sizeof(prey_event));
-	if (!strcmp(type, "add"))
-		tmp -> ev_type = '0';
-	else
-		tmp -> ev_type = '1';
+	tmp -> ev_type = type;
 	tmp -> gen = gen;
 	tmp -> xaxis = x;
 	tmp -> yaxis = y;
 	tmp -> next = NULL;
+	fprintf(stderr, "%u %u\n", tmp -> ev_type, tmp -> gen);
 	if (preyev_h == NULL){ /* first entry */
 		preyev_h = tmp;
 		preyev_t = tmp;
@@ -171,16 +169,21 @@ unsigned cmd_params(int argc, char** argv){
 
 		/* position in map for a prey */
 		if ( (!strcmp(argv[i], "-ppos" ) ) ){
-			 add_prey_pos(atof(argv[++i]), atof(argv[++i]));
-			 user_prey++;
+			float x =  atof(argv[++i]);
+			float y = atof(argv[++i]);
+			add_prey_pos(x, y);
+			user_prey++;
 			continue;
 		}
 
 		if ( (!strcmp(argv[i], "-evnt" ) ) ){
-			 add_prey_event(argv[++i], atoi(argv[++i]), atof(argv[++i]), atof(argv[++i]));
+			unsigned type = atoi(argv[++i]);
+			unsigned gen = atoi(argv[++i]);
+			float x =  atof(argv[++i]);
+			float y = atof(argv[++i]);
+			add_prey_event(type, gen, x, y);
 			continue;
 		}
-
 
 	/* --- strategy related command line parameters --- */
 		if ( (!strcmp(argv[i], "-nsyn" ) ) ){
