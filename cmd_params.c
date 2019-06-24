@@ -93,12 +93,39 @@ void print_help(){
 	printf("\n\n ------------ Command Line Parameters ------------ \n\n");
 
 	printf("General purpose commands:\n\n");
+	printf("\t-neutral_model: Simulation is under a neutral model without an Evolutionary Game\n\n")
 	printf("\t-seed: user-defined seed for the random number generator function.\n\n");
-
+	/* --------- */
+	printf("\t-gsnd: set the variance for whenever a Gaussian distribution is used\n\n");
+	printf("\t-burn: determine whether a burn-in phase will preceed the game and the number of generations it.\n\n");
 	printf("\t-rnds: determines the number of generations the program will simulate. Paremeter value must be a positive integer.\n\n");
+
+	printf("\t-pred: number of predators\n\n");
+	printf("\t-prey: number of preys\n\n");
+	printf("\t-ppos: determines the position of a prey in the map. For multiple ppos just repeat the command.\n\n");
+
+	printf("\tPredator Initialization:\n\n");
+	printf("\t-neut: initiazes the genotype of every predator with zero in every position.\n\n");
+	printf("\t-nsyn: number of Synergy predators to be in the initial population\n\n");
+	printf("\t-nign: number of Ignore predators to be in the initial population\n\n");
+	printf("\t-ncom: number of competition predators to be in the initial population\n\n");
+
+	printf("\t-synr: Synergy threshold. Below this aggression threshold predators are Co-operators\n\n");
+	printf("\t-comr: Competition threshold. Above this aggression threshold predators are Competitors\n\n");
+
+	printf("\t-size: Sets the size of the genotype\n\n");
+	printf("\t-pinf: Number of areas in the genotype affecting the phenotype. Also specifies these areas. First integer is the number, rest determine the areas.\n\n");
+
+	printf("\t-mutr: Sets the mutation rate\n\n");
+	printf("\t-recr: Sets the recombination rate\n\n");
+
+	printf("\t-bttl: Determines whether a bottleneck event will take place. Also determines the generation when the event takes place and the new population size. Multiple bottleneck events can be simulated by repeating this command in chronological order.\n\n");
+
+	printf("\t-smpl: Determines sampling events: First argument is the generation when the sampling happens. Then, the number of samples is set.\n\n");
+	printf("\t-sbrn: Similar to sampling, just for the burn-in phase.\n\n");
+
 	printf("\t---\n\n");
 
-	printf("\n\nGo read the fucking code\n\n");
 }
 
 unsigned cmd_params(int argc, char** argv){
@@ -107,6 +134,12 @@ unsigned cmd_params(int argc, char** argv){
 	for (i = 1; i < argc; i++){
 
 		/* --------- general use ---------- */
+
+		/* ----- help ----- */
+		if ( (!strcmp(argv[i], "-help" ) ) ){
+			print_help();
+			exit(0);
+		}
 
 		if ( (!strcmp(argv[i], "-neutral_model" ) ) ){
                         neutral_model = 1;
@@ -125,12 +158,6 @@ unsigned cmd_params(int argc, char** argv){
 			continue;
 		}
 
-		/* ----- help ----- */
-		if ( (!strcmp(argv[i], "-help" ) ) ){
-			print_help();
-			exit(0);
-		}
-
 		if ( (!strcmp(argv[i], "-rnds" ) ) ){
 			rounds = atoi(argv[++i]);
 			continue;
@@ -141,11 +168,11 @@ unsigned cmd_params(int argc, char** argv){
 			continue;
 		}
 
-		/* whether population size will remain constant */
-		if ( (!strcmp(argv[i], "-cnst" ) ) ){
-			const_size = 1;
-			continue;
-		}
+		// /* whether population size will remain constant */
+		// if ( (!strcmp(argv[i], "-cnst" ) ) ){
+		// 	const_size = 1;
+		// 	continue;
+		// }
 
 		if ( (!strcmp(argv[i], "-pred" ) ) ){
 			pred_num = atoi(argv[++i]);
