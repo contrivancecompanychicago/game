@@ -10,7 +10,9 @@ extern short * MutationEvents;
 genome_sample * Sam_genome = NULL;
 extern gsl_rng * r;
 extern unsigned social_choices[3];
+
 extern short byte2bit;
+extern short neutral_model;
 
 void print_strat_percentages(short gen){
   unsigned i;
@@ -18,6 +20,7 @@ void print_strat_percentages(short gen){
   social_choices[1] = 0;
   social_choices[2] = 0;
   unsigned tot = gens[gen].num;
+//  fprintf(stderr, "%u\n", tot);
   for (i = 0; i < tot; i++)
     social_choices[gens[gen].pred[i].strategy - 1]++;
   FILE * f1 = fopen("strat_percent.txt", "a");
@@ -49,8 +52,8 @@ void print_samples(){
 }
 
 void sampling(unsigned num){
-  print_strat_percentages(!curr_flag);
-  return; /* will be removed later */
+  if (neutral_model == 0)
+	 print_strat_percentages(!curr_flag);
   gsl_permutation * perm = gsl_permutation_alloc((size_t)gens[curr_flag].num);
   gsl_permutation_init(perm);
   gsl_ran_shuffle(r, perm -> data, (size_t)gens[curr_flag].num, sizeof(size_t));
@@ -70,14 +73,14 @@ void sampling(unsigned num){
     Sam_genome[i].gen = curr_gen;
   }
   samples += num;
-  fprintf(stderr, "sampl: %u\n", samples);
+ // fprintf(stderr, "sampl: %u\n", samples);
 
-  FILE * f1 = fopen("sampled_strategies.txt","a");
+/*  FILE * f1 = fopen("sampled_strategies.txt","a");
   fprintf(f1, "Gen: %u w/ %u samples\n", curr_gen, samples);
   for (i = samples; i < (samples + num); i++)
     fprintf(f1, "%u ", gens[curr_flag].pred[(unsigned)perm->data[i]].strategy);
   fprintf(f1, "\n");
-  fclose(f1);
+  fclose(f1); */
   gsl_permutation_free(perm);
 }
 
@@ -85,10 +88,13 @@ void sampling(unsigned num){
 void print_binary( num_type number, unsigned counter, unsigned max, FILE * out_file){
   if( counter < max )
     print_binary( number >> 1, ++counter, max, out_file);
-  putc((number & 1) ? '1' : '0', out_file);
+  putc((number & (num_type)1) ? '1' : '0', out_file);
 }
 
 void ms_output(){
+	if (Sam_genome == NULL)
+		return;
+
   /* we first need to print the general information */
   unsigned i;
   long long unsigned bits = sizeof(num_type) * byte2bit;
@@ -121,8 +127,6 @@ void vcf_output(){
 }
 
 void free_samples(){
-  if (Sam_genome = NULL)
-    return;
   unsigned i;
   for (i = 0; i < samples; i++)
     free(Sam_genome[i].geno);

@@ -16,27 +16,27 @@ extern float com_rate;
 extern float syn_rate;
 
 extern strategy_t choose_strategy(unsigned aggro);
-extern strategy_t choose_strategy_mask(num_type * geno);
 extern float variance;
 
 extern unsigned rounds;
 extern gsl_rng * r;
 extern short byte2bit;
 
-double recombination_rate = 0.0001;
-double mutation_rate = 0.01;
+double recombination_rate = 0.1;
+double mutation_rate = 0.02;
 short * MutationEvents;
 
 unsigned num_inf = 0;					/* number of 64-sized genome segments that influence strategy */
 unsigned * PosInfuence; 			/* which those 64-sized segments are */
 
 /* ------- genotype expression ------ */
-unsigned genotype_size = 10; 	/* determines how many bases affect the strategy of each predator */
+unsigned genotype_size = 50; 	/* determines how many bases affect the strategy of each predator */
 unsigned migration_size = 5;	/* determines how many bases affect the migration pattern of each predator */
 /* ---------------------------------- */
 char const_size = 0; 					/* determines whether the number of predators remains constant in each generation */
 unsigned pred_num = 10;				/* initial number of predators ~ Default 10 unless user defined */
 unsigned pred_pid = 0;
+unsigned neut = 0;						/* number of user -defined neutral / all 0 players */
 unsigned nsyn = 0;						/* number of user-defined synergetic predators */
 unsigned nign = 0;						/* number of user-defined ignoring predators */
 unsigned ncom = 0;						/* nubmer of user-defined competitive predators */
@@ -76,16 +76,15 @@ predator * recombine(predator * p, predator * parent1, predator * parent2){
 	}
 
 	/* now we need to recombine the cutting point */
-	unsigned cut_base = rand() % (sizeof(num_type) * 8);
+	unsigned cut_base = rand() % (sizeof(num_type) * byte2bit);
 	left = left >> cut_base << cut_base;
-	right = right << (63 - cut_base) >> ((sizeof(num_type) * 8) - cut_base);
+	right = right << (63 - cut_base) >> ((sizeof(num_type) * byte2bit) - cut_base);
 	p -> geno[cutting_point] = left | right;
+	/* recalculate the aggession level */
 	p -> aggro = 0;
 	unsigned i;
-	for (i = 0; i < num_inf; i++){
-		p -> geno[PosInfuence[i]] = rand() % MAXIMUM;
+	for (i = 0; i < num_inf; i++)
 		p -> aggro += __builtin_popcount(p -> geno[PosInfuence[i]]);
-	}
 	return p;
 }
 
@@ -109,8 +108,9 @@ predator * set_geno(predator * p, predator * parent1, predator * parent2){
 	random = ((float)rand()/(float)(RAND_MAX));
 	if (random < mutation_rate){
 		unsigned i = rand() % genotype_size; /* which of the num-sized genome segment will have the mutation */
-		unsigned j = rand() % (8 * sizeof(num_type));	/* which bit of that segment will get the mutation */
+		unsigned j = rand() % (byte2bit * sizeof(num_type));	/* which bit of that segment will get the mutation */
 		num_type mask = 1 << j;
+		num_type test_correct = p -> geno[i];
 		p -> geno[i] = p -> geno[i] ^ mask;
 		MutationEvents[i] = 1;
 	}
@@ -130,21 +130,35 @@ double distance(unsigned p1, unsigned p2, unsigned gen){
 			 + abs(gens[gen].pred[p1].yaxis - gens[gen].pred[p2].yaxis);
 }
 
+
+void create_neutral_fitness_map(unsigned gen){
+        unsigned i, j;
+	tot_fit = 0;
+        for (i = 0; i < gens[gen].num - 1; i++){
+                for (j = i + 1; j < gens[gen].num - 1; j++){
+                        tot_fit +=  1.0 / (distance(i,j, gen) + 1);
+                        FitMap[i][j] = tot_fit;
+                }
+   	}
+}
+
 void create_fitness_map(unsigned gen){
 	unsigned i, j;
+	//double tot_fit = 0.0;
 	for (i = 0; i < gens[gen].num - 1; i++){
 		for (j = i + 1; j < gens[gen].num - 1; j++){
-			if (! (abs(gens[gen].pred[i].xaxis - gens[gen].pred[j].xaxis) > range) || (abs(gens[gen].pred[i].yaxis - gens[gen].pred[j].yaxis) > range) )
-				tot_fit +=  (gens[gen].pred[i].fitness * gens[gen].pred[j].fitness) / (distance(i,j, gen) + 1);
+			tot_fit +=  gens[gen].pred[i].fitness * gens[gen].pred[j].fitness;// / (distance(i,j, gen) + 1);
 			FitMap[i][j] = tot_fit;
 		}
 	}
+	assert(tot_fit != 0);
 }
 
 /* we select a pair of predators to be the parents of the child */
 predator * choose_parents(predator * p){
 	predator * parent1 = NULL;
 	predator * parent2 = NULL;
+	assert(tot_fit != 0);
 	double fit = tot_fit * (rand() / (double)RAND_MAX);
 	unsigned num = gens[(!curr_flag)].num;
 	unsigned i,j;
@@ -180,10 +194,25 @@ void add_burnin_predator(unsigned num){
 	gens[curr_flag].pred[num].strategy = choose_strategy(gens[curr_flag].pred[num].aggro);
 }
 
+void add_neutral_predator(unsigned num){
+	gens[curr_flag].pred[num].fitness = 0.0; /* all same since all neutral */
+	gens[curr_flag].pred[num] = *choose_parents(&gens[curr_flag].pred[num]);
+	gens[curr_flag].pred[num].strategy = choose_strategy(gens[curr_flag].pred[num].aggro);
+}
+
 void add_predator(unsigned num){
 	gens[curr_flag].pred[num].fitness = 0.0; /* is determined after the game */
 	gens[curr_flag].pred[num] = *choose_parents(&gens[curr_flag].pred[num]);
 	gens[curr_flag].pred[num].strategy = choose_strategy(gens[curr_flag].pred[num].aggro);
+}
+
+void neutral_reproduce(){
+	create_neutral_fitness_map( !curr_flag);
+	unsigned i;
+	for (i = 0; i < pred_num; i++)
+		add_neutral_predator(i);
+	gens[curr_flag].num += pred_num;
+	return;
 }
 
 void reproduce(){
@@ -220,16 +249,8 @@ predator * init_genotype(predator * p, unsigned pos, unsigned num){
 	gsl_ran_shuffle(r, perm -> data, (size_t)bits, sizeof(size_t) );
 
 	unsigned i;
-	FILE * f1 = fopen("init.txt", "a");
-	fprintf(f1, "%u -- %lu\n", num, p -> geno[pos]);
-	for (i = 0; i < num; i++){
-		p -> geno[pos] += 1 << (unsigned)perm -> data[i];
-		fprintf(f1, "%lu - %u w/ %u\n", p -> geno[pos],(unsigned)perm -> data[i], __builtin_popcount(p -> geno[pos]));
-	}
-	fprintf(f1, "\n");
-	fclose(f1);
 	gsl_permutation_free(perm);
-	assert(num == __builtin_popcount(p -> geno[pos]) );
+	///assert(num == __builtin_popcount(p -> geno[pos]) );
 	return p;
 }
 
@@ -251,7 +272,12 @@ void init_predator(){
 	gens[0].pred[x].aggro = 0;
 	unsigned i = 0;
 	unsigned bits = sizeof(num_type) * byte2bit;
-	if (nsyn > 0){ /* user-defined synergistic predators */
+	if (neut > 0){ /* neutral scenario for comparison with ms | start with 0's everywhere */
+		gens[0].pred[x].strategy = synergy;
+		neut--;
+	}
+
+	else if (nsyn > 0){ /* user-defined synergistic predators */
 		unsigned num;
 		gens[0].pred[x].strategy = synergy;
 		gens[0].pred[x].aggro = 0;
@@ -264,12 +290,15 @@ void init_predator(){
 		nsyn--;
 	}
 	else if (nign > 0){ /* user-defined ignore predators */
+
 		gens[0].pred[x].strategy = ignore;
 		gens[0].pred[x].aggro = 0;
 		unsigned num;
 		for (i = 0; i < num_inf; i++){
-			num = rand() % (unsigned)round(bits * (com_rate - syn_rate))
-			 	  + (unsigned)round(bits * syn_rate);
+			if (com_rate <= 1)
+				num = rand() % (unsigned)round(bits * (com_rate - syn_rate))  + (unsigned)round(bits * syn_rate);
+			else
+				num = rand() % (unsigned)round(bits * (1 - syn_rate))  + (unsigned)round(bits * syn_rate);
 			gens[0].pred[x] = *init_genotype(&gens[0].pred[x], PosInfuence[i], num);
 			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
@@ -290,78 +319,9 @@ void init_predator(){
 	}
 	else{
 		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = (num_type)rand() % MAXIMUM;
+			gens[0].pred[x].geno[PosInfuence[i]] = (unsigned long long)rand() % MAXIMUM;
 			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
 		}
 		gens[0].pred[x].strategy = choose_strategy(gens[0].pred[x].aggro);
-	}
-}
-
-
-void init_predator_probabilistic(){
-  unsigned x = gens[0].num;
-	if (gens[0].pred == NULL){ /* first entry in the current generation */
-		gens[0].pred = malloc(pred_num * sizeof(predator));
-		gens[0].num = 0;
-		x = 0;
-	}
-
-	gens[0].pred[x].fitness = 0.0; /* is determined after the game */
-	gens[0].pred[x].xaxis = ((double)rand()/(double)RAND_MAX) * dimension;
-	gens[0].pred[x].yaxis = ((double)rand()/(double)RAND_MAX) * dimension;
-	gens[0].num++;
-
-	/* now we need to initialize both the genotype and the strategy */
-	gens[0].pred[x].geno = calloc(sizeof(num_type), genotype_size);
-	gens[0].pred[x].aggro = 0;
-	unsigned i = 0;
-  unsigned bits = sizeof(num_type) * byte2bit;
-
-  /* --- here start the differences with the other implementation */
-
-  if (nsyn > 0){ /* user-defined synergistic predators */
-		num_type tot = __builtin_popcount(~0);
-		num_type num;
-    gens[0].pred[x].strategy = synergy;
-    gens[0].pred[x].aggro = 0;
-    for (i = 0; i < num_inf; i++){
-      num = rand() % (num_type)(bits * syn_rate);
-      gens[0].pred[x].geno[PosInfuence[i]] = num << (num_type)(tot - bits * syn_rate);
-      gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
-    }
-		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
-    nsyn--;
-  }
-  else if (nign > 0){ /* user-defined ignore predators */
-    gens[0].pred[x].strategy = ignore;
-    gens[0].pred[x].aggro = 0;
-    num_type num;
-    for (i = 0; i < num_inf; i++){
-      num = rand() % (num_type)round(bits * (com_rate - syn_rate))
-          + (num_type)round(bits * syn_rate);
-      gens[0].pred[x].geno[PosInfuence[i]] = num << (num_type)(bits * syn_rate);
-      gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
-    }
-		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
-    nign--;
-  }
-  else if (ncom > 0){ /* user-defined competition predators */
-    gens[0].pred[x].strategy = competition;
-    gens[0].pred[x].aggro = 0;
-    num_type num;
-    for (i = 0; i < num_inf; i++){
-      num = (num_type)rand() % (num_type)(bits * (1.0 - com_rate));
-      gens[0].pred[x].geno[PosInfuence[i]] = num;
-      gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
-    }
-		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
-    ncom--;
-	}
-	else{
-		for (i = 0; i < num_inf; i++){
-			gens[0].pred[x].geno[PosInfuence[i]] = (num_type)rand() % MAXIMUM;
-			gens[0].pred[x].aggro += __builtin_popcount(gens[0].pred[x].geno[PosInfuence[i]]);
-		}
-		gens[0].pred[x].strategy = choose_strategy_mask(gens[0].pred[x].geno);
 	}
 }

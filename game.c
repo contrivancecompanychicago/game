@@ -3,6 +3,11 @@
 time_t t;
 gsl_rng * r;
 
+
+
+/* -------- neutral ------- */
+void neutral_reproduce();
+
 extern unsigned cmd_params();
 
 /* ----- from prey.c ------ */
@@ -12,7 +17,6 @@ extern unsigned prey_num;
 /* --- from predator.c --- */
 extern void add_burnin_predator(unsigned num);
 extern void init_pred();
-extern void init_predator_probabilistic();
 extern unsigned pred_num;
 extern char const_size;
 extern unsigned * People; 			/* number of predators in each generation */
@@ -25,18 +29,12 @@ extern double ** FitMap;
 char pop_change = '0';
 unsigned fit_size;
 
-/* --- from strategy_payoff.c --- */
-extern void set_masks();
-
 /* --- from produce_output.c --- */
 extern void sampling(unsigned num);
 extern void print_samples();
 extern void free_samples();
 extern void print_strategies(unsigned gen);
 extern void print_strat_percentages(short gen);
-
-extern void prey_event_add(float xaxis, float yaxis);
-extern void prey_event_remove(float xaxis, float yaxis);
 
 extern void ms_output();
 sample_events * sample_h = NULL;
@@ -48,6 +46,7 @@ extern unsigned social_choices[3];
 extern float payoff_matrix[3];
 
 unsigned burnin = 200;
+char burn_sampling = '0';
 unsigned rounds = 500;					/* default value unless user defined */
 unsigned curr_gen = 0;
 unsigned curr_flag = 1;					/* which part of the vector is used to store the current generation */
@@ -56,13 +55,17 @@ extern float tot_fit;
 
 generation * gens = NULL; 			/* store predators in each generation */
 extern prey * prey_array;
-prey_event * preyev_h = NULL;
 
 /* population size change */
 unsigned first_event = -1; 			/* marks the generation for which the tree is pruned */
 bottle * bottle_h = NULL;
 
 short byte2bit = 4; /* depends on whether you have a 32 or a 64bit architecture */
+
+short neutral_model = 0; /* whether the simulator should function under a neutral model or not ~ Default is not */
+
+short strat_print_flag = 0;
+short got_fixated = 0;
 
 void play(prey * p){
 	find_in_range(p, !curr_flag);
@@ -82,6 +85,7 @@ void prep_game(prey * p){	/* hard_coded --> faster */
 	free(p -> pred_index);
 	p -> pred_index = NULL;
 	p -> num = 0;
+	tot_fit = 0;
 }
 
 void allocate_fitness_table(){
@@ -138,8 +142,20 @@ void change_fit_population_size(){
 }
 
 void burn_in(){
-	unsigned i;
+	unsigned i = 0;
 	while (curr_gen < burnin){
+
+		/* allow for samples during burn - in */
+		if ( burn_sampling == '1' && curr_gen == sample_gen && sample_h != NULL ){
+			sampling(sample_h -> num);
+			sampling(sample_h -> num);
+                        sample_events * tmp = sample_h;
+                        sample_h = sample_h -> next;
+                        free(tmp);
+                        if (sample_h != NULL)
+	                        sample_gen = sample_h -> gen;
+		}
+
 		gens[curr_flag].num = 0;
 		for (i = 0; i < pred_num; i++)
 			add_burnin_predator(i);
@@ -150,14 +166,58 @@ void burn_in(){
 	curr_gen = 0;
 }
 
+void non_random_neutral_mating(){
+	unsigned i = 0;
+	while (curr_gen < rounds){
+
+	        if (curr_gen == sample_gen && sample_h != NULL){
+                        sampling(sample_h -> num);
+                        sample_events * tmp = sample_h;
+                        sample_h = sample_h -> next;
+                        free(tmp);
+                        if (sample_h != NULL)
+                                sample_gen = sample_h -> gen;
+                }
+                if (curr_gen == first_event)
+                        change_population_size();
+                else if(pop_change != '0')
+                        change_fit_population_size();
+
+                tot_fit = 0.0;
+		gens[curr_flag].num = 0;
+
+		neutral_reproduce();
+
+		gens[curr_flag].num = pred_num;
+		curr_gen++;
+		curr_flag = !curr_flag; /* switch the index of the previous generation */
+	}
+}
+
+
 void game(){
 	unsigned i = 0;
 	while (curr_gen < rounds){
+
+		if ( (got_fixated == 0) && (social_choices[competition - 1] == pred_num) ){
+			FILE * f1 = fopen("fix.txt", "a");
+			fprintf(f1, "%u\n", curr_gen);
+			fclose(f1);
+			curr_gen = rounds - 20;
+			got_fixated = 1;
+		}
+
 		/* special event happens during this generation */
-		// if (curr_gen % 500 == 0){
-		// 	fprintf(stderr, "Current Generation: %u\n", curr_gen);
-		// 	print_strategies(curr_flag);
-		// }
+		if ( curr_gen % 500 == 0)
+			print_strat_percentages(!curr_flag);
+
+		if ( strat_print_flag == 0 &&  social_choices[competition - 1] >= (pred_num * 0.2)){
+			FILE * f1 = fopen("fix.txt", "a");
+                        fprintf(f1, "%u ", curr_gen);
+                        fclose(f1);
+			print_strat_percentages(!curr_flag);
+			strat_print_flag = 1;
+		}
 		if (curr_gen == sample_gen && sample_h != NULL){
 			sampling(sample_h -> num);
 			sample_events * tmp = sample_h;
@@ -166,22 +226,12 @@ void game(){
 			if (sample_h != NULL)
 				sample_gen = sample_h -> gen;
 		}
+		//else
+		//	print_strat_percentages(!curr_flag);
 		if (curr_gen == first_event)
 			change_population_size();
 		else if(pop_change != '0')
 			change_fit_population_size();
-		if (preyev_h != NULL && curr_gen == preyev_h -> gen){
-			print_preys();
-			fprintf(stderr, "here\n");
-			if (preyev_h -> ev_type == 0)
-				prey_event_remove(preyev_h -> xaxis, preyev_h -> yaxis);
-			else
-				prey_event_add(preyev_h -> xaxis, preyev_h -> yaxis);
-			prey_event * tmp_ev = preyev_h;
-			preyev_h = preyev_h -> next;
-			free(tmp_ev);
-			print_preys();
-		}
 
 		gens[curr_flag].num = 0;
 		tot_fit = 0.0;
@@ -231,12 +281,11 @@ void initialize(){
 	fprintf(sp, "Synergy Ignore Competition\n");
 	fclose(sp);
 
-	set_masks();
 	for (i = 0; i < pred_num; i++)
-		init_predator_probabilistic();
+		init_predator();
 	print_strat_percentages(!curr_flag);
-
 	/* ---- init generation 1 (no values assigned)---- */
+
 	gens[1].pred = malloc(pred_num * sizeof(predator));
 	for (i = 0; i < pred_num; i++)
 		gens[1].pred[i].geno = malloc(sizeof(num_type) * genotype_size);
@@ -253,30 +302,35 @@ int main(int argc, char ** argv){
 	T = gsl_rng_default;
 	r = gsl_rng_alloc(T);
 	gsl_rng_set(r, seed);
-	clock_t start = clock();
+	//clock_t start = clock();
 
 	initialize();
 	burn_in();
-	print_strat_percentages(!curr_flag);
-	allocate_fitness_table();
-	/* actually play the game */
-	game();
 
+	//print_strat_percentages(!curr_flag);
+	allocate_fitness_table();
+
+	if (neutral_model == 0)
+	    game();
+	else
+	    non_random_neutral_mating();
+
+	sampling(10);
 	/* we now sample predators and print the mutation table */
-	//assert(samples <= pred_num);
+	assert(samples <= pred_num);
 	if (sample_h != NULL) /* final sampling event */
-  	sampling(sample_h -> num);
-	//ms_output();
+  		sampling(sample_h -> num);
+	ms_output();
 
 	/* free everything */
 	freedom();
 
 	/* ------------------------------------- */
-	clock_t end = clock();
+	/*clock_t end = clock();
 	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
 	FILE * f1 = fopen("seed_time.txt", "a");
 	fprintf(f1,"----------------------\n seed: %d in %f seconds \n",seed, seconds);
 	fclose(f1);
-	fprintf (stderr, "\nALL DONE in %f\n", seconds);
+	printf ("\nALL DONE in %f\n", seconds); */
 	return 0;
 }

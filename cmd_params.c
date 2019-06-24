@@ -5,6 +5,8 @@ extern unsigned burnin;
 extern unsigned rounds;
 extern time_t t;
 extern int sample_gen;
+extern char burn_sampling;
+extern short neutral_model;
 
 /* ----- from prey.c ----- */
 extern unsigned prey_num;
@@ -17,6 +19,7 @@ extern char const_size;
 extern unsigned pred_num;
 extern unsigned first_event;
 extern bottle * bottle_h;
+extern unsigned neut;
 extern unsigned nsyn;
 extern unsigned nign;
 extern unsigned ncom;
@@ -25,7 +28,7 @@ extern unsigned samples;
 extern unsigned genotype_size;
 extern unsigned * PosInfuence;
 extern unsigned num_inf;
-
+extern double mutation_rate;
 /*- from strategy_payoff.c -*/
 extern float variance;
 extern float syn_rate;
@@ -34,8 +37,7 @@ extern float com_rate;
 bottle * tail = NULL;
 extern sample_events * sample_h;
 sample_events * sample_t;
-extern prey_event * preyev_h;
-prey_event * preyev_t;
+
 
 void add_prey_pos(float x, float y){
 	if (posh == NULL){ /* first entry */
@@ -50,26 +52,8 @@ void add_prey_pos(float x, float y){
 	tmp -> x = x;
 	tmp -> y = y;
 	tmp -> next = NULL;
-	post -> next = tmp;
+	posh -> next = tmp;
 	post = tmp;
-}
-
-void add_prey_event(int type, int gen, float x, float y){
-	fprintf(stderr, "%u %u\n", type, gen);
-	prey_event * tmp = malloc(sizeof(prey_event));
-	tmp -> ev_type = type;
-	tmp -> gen = gen;
-	tmp -> xaxis = x;
-	tmp -> yaxis = y;
-	tmp -> next = NULL;
-	fprintf(stderr, "%u %u\n", tmp -> ev_type, tmp -> gen);
-	if (preyev_h == NULL){ /* first entry */
-		preyev_h = tmp;
-		preyev_t = tmp;
-		return;
-	}
-	preyev_t -> next = tmp;
-	preyev_t = preyev_t -> next;
 }
 
 /* bottleneck events */
@@ -123,6 +107,11 @@ unsigned cmd_params(int argc, char** argv){
 
 		/* --------- general use ---------- */
 
+		if ( (!strcmp(argv[i], "-neutral_model" ) ) ){
+                        neutral_model = 1;
+                        continue;
+                }
+
 		/* seed for random */
 		if ( (!strcmp(argv[i], "-seed" ) ) ){
 			seed = atoi(argv[++i]);
@@ -169,23 +158,17 @@ unsigned cmd_params(int argc, char** argv){
 
 		/* position in map for a prey */
 		if ( (!strcmp(argv[i], "-ppos" ) ) ){
-			float x =  atof(argv[++i]);
-			float y = atof(argv[++i]);
-			add_prey_pos(x, y);
-			user_prey++;
-			continue;
-		}
-
-		if ( (!strcmp(argv[i], "-evnt" ) ) ){
-			unsigned type = atoi(argv[++i]);
-			unsigned gen = atoi(argv[++i]);
-			float x =  atof(argv[++i]);
-			float y = atof(argv[++i]);
-			add_prey_event(type, gen, x, y);
+			 add_prey_pos(atof(argv[++i]), atof(argv[++i]));
+			 user_prey++;
 			continue;
 		}
 
 	/* --- strategy related command line parameters --- */
+		if ( (!strcmp(argv[i], "-neut" ) ) ){
+			neut = atoi(argv[++i]);
+			continue;
+		}
+
 		if ( (!strcmp(argv[i], "-nsyn" ) ) ){
 	 		nsyn = atoi(argv[++i]);
 			continue;
@@ -217,6 +200,12 @@ unsigned cmd_params(int argc, char** argv){
 			continue;
 		}
 
+		 if ( (!strcmp(argv[i], "-mutr" ) ) ){
+                        mutation_rate = atof(argv[++i]);
+                        continue;
+                }
+
+
 		if ( (!strcmp(argv[i], "-size" ) ) ){
 			genotype_size = atoi(argv[++i]);
 			continue;
@@ -228,6 +217,15 @@ unsigned cmd_params(int argc, char** argv){
 			add_bottle(gen, prd);
 			continue;
 		}
+
+		/* determines burn - in sample events */
+		 if ( (!strcmp(argv[i], "-sbrn" ) ) ){
+			char burn_sampling = '1';
+                        unsigned gen = atoi(argv[++i]);
+                        unsigned num = atoi(argv[++i]);
+                        add_samples(gen, num);
+                        continue;
+                }
 
 		/* determines sample events */
 		if ( (!strcmp(argv[i], "-smpl" ) ) ){
