@@ -29,6 +29,7 @@ extern unsigned genotype_size;
 extern unsigned * PosInfuence;
 extern unsigned num_inf;
 extern double mutation_rate;
+extern double recombination_rate;
 /*- from strategy_payoff.c -*/
 extern float variance;
 extern float syn_rate;
@@ -200,11 +201,15 @@ unsigned cmd_params(int argc, char** argv){
 			continue;
 		}
 
-		 if ( (!strcmp(argv[i], "-mutr" ) ) ){
-                        mutation_rate = atof(argv[++i]);
-                        continue;
-                }
+		if ( (!strcmp(argv[i], "-mutr" ) ) ){
+			mutation_rate = atof(argv[++i]);
+			continue;
+		}
 
+		if ( (!strcmp(argv[i], "-recr" ) ) ){
+			recombination_rate = atof(argv[++i]);
+			continue;
+		}
 
 		if ( (!strcmp(argv[i], "-size" ) ) ){
 			genotype_size = atoi(argv[++i]);
