@@ -39,7 +39,7 @@ for (m in mut){ #for each mutation rate
     seed <- sample(1:100000000, n,  replace=FALSE) #random seeds
 
     #actual command line parameters
-    cmds <- paste(curDir, "/game -pred 500 -prey 1 -pinf 1 3 -rnds 3000 -burn 500  -synr 0.0 -comr ", j, " -neut 500  -seed ", seed, " -mutr ", m, sep="")
+    cmds <- paste(curDir, "/feg -pred 500 -prey 1 -pinf 1 3 -rnds 3000 -burn 500  -synr 0.0 -comr ", j, " -neut 500  -seed ", seed, " -mutr ", m, sep="")
     write.table(x=cmds, file="cmd.txt", append=F, quote=F, row.names=F, col.names=F)
 
     #make directory to store this set of simulations
