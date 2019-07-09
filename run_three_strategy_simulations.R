@@ -41,7 +41,7 @@ for (m in mut){ #for each mutation rate
 	        both_param <- paste(param[i], "_", param[j], sep="")
 	        #out_path <- paste(out_dir , sep="")
 
-   	      cmds <- paste(curDir, "/game -pred 500 -prey 1 -pinf 1 3 -burn 4000 -rnds 5000 -synr ",param[i], " -comr ", param[j], " -nsyn 500  -seed ", seed, " -mutr ", m, sep="")
+   	      cmds <- paste(curDir, "/feg -pred 500 -prey 1 -pinf 1 3 -burn 4000 -rnds 5000 -synr ",param[i], " -comr ", param[j], " -nsyn 500  -seed ", seed, " -mutr ", m, sep="")
     	    write.table(x=cmds, file="cmd.txt", append=F, quote=F, row.names=F, col.names=F)
 
     	    make_dir <- paste("mkdir ", out_dir, both_param, sep="")
