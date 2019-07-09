@@ -1,7 +1,7 @@
 SOURCES =  game.c cmd_params.c predator.c prey.c strategy_payoff.c produce_output.c
 OBJECTS = $(SOURCES:%.c=%.o)
 
-TARGET = game
+TARGET = feg
 
 all: $(TARGET)
 
